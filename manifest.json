@@ -1,0 +1,39 @@
+{
+  "families": [
+    {
+      "id": "eldaraure",
+      "name": "Eldaraure",
+      "displayName": "Eldaraure",
+      "variants": {
+        "bold": {
+          "path": "fonts/Eldaraure-Bold.ttf",
+          "style": "Bold",
+          "weight": 700,
+          "italic": false,
+          "format": "truetype"
+        },
+        "boldItalic": {
+          "path": "fonts/Eldaraure-BoldItalic.ttf",
+          "style": "Bold Italic",
+          "weight": 700,
+          "italic": true,
+          "format": "truetype"
+        },
+        "italic": {
+          "path": "fonts/Eldaraure-Italic.ttf",
+          "style": "Italic",
+          "weight": 400,
+          "italic": true,
+          "format": "truetype"
+        },
+        "regular": {
+          "path": "fonts/Eldaraure-Regular.ttf",
+          "style": "Regular",
+          "weight": 400,
+          "italic": false,
+          "format": "truetype"
+        }
+      }
+    }
+  ]
+}

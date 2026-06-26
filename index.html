@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Font Maker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    [hidden] { display: none !important; }
+
+    :root {
+      --bg-deep: #090b10;
+      --bg-surface: #12151c;
+      --bg-elevated: #1a1f2a;
+      --bg-input: #0e1118;
+      --border: rgba(148, 163, 184, 0.14);
+      --border-focus: rgba(139, 156, 255, 0.5);
+      --text: #eef1f7;
+      --text-muted: #8b93a7;
+      --accent: #8b9cff;
+      --accent-soft: rgba(139, 156, 255, 0.14);
+      --warm: #e8a87c;
+      --ink: #a8c4ff;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --toolbar-h: 48px;
+      --tabs-h: 42px;
+      --header-h: 48px;
+      --chrome-h: calc(var(--header-h) + var(--toolbar-h) + var(--tabs-h));
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg-deep);
+      line-height: 1.45;
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    input, textarea, select, [contenteditable="true"] {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    button, .home-btn, .font-card, .font-card-saved, .tab-btn, .variant-pill,
+    .char-btn, .glyph-cell, .tool-btn, .chip, .lang-item, .ghost-btn, .nudge-btn,
+    .export-btn, .toolbar-back, .toolbar-save, label.toolbar-link-toggle,
+    .about-close, .font-card-delete {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .backdrop {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(139, 156, 255, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 80%, rgba(232, 168, 124, 0.06) 0%, transparent 50%),
+        var(--bg-deep);
+      pointer-events: none;
+    }
+    .app-shell {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      max-width: none;
+      margin: 0;
+    }
+    .app-shell.workspace #home { display: none; }
+    #main {
+      flex: 1; min-height: 0;
+      display: none; flex-direction: column;
+    }
+    .app-shell.workspace #main { display: flex; }
+
+    /* Home / main menu */
+    .home-screen {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: clamp(1.5rem, 4vh, 2.5rem) clamp(1rem, 5vw, 3rem) 2.5rem;
+    }
+    .home-hero {
+      text-align: center;
+      margin-bottom: clamp(1.5rem, 4vh, 2.5rem);
+      padding-top: clamp(0.5rem, 3vh, 2rem);
+    }
+    .home-title {
+      font-family: "Instrument Serif", serif;
+      font-size: clamp(2.75rem, 10vw, 4.5rem);
+      font-weight: 400;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 0.45rem;
+    }
+    .home-subtitle {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .home-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      min-height: 0;
+    }
+    .home-actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 1.75rem;
+    }
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.85rem 1.35rem;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      min-height: 48px;
+    }
+    .home-btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6b7fd4);
+      border: none;
+      color: var(--bg-deep);
+      box-shadow: 0 4px 24px rgba(139, 156, 255, 0.25);
+    }
+    .home-btn-primary:hover { filter: brightness(1.06); }
+    .home-btn-upload {
+      background: rgba(232, 168, 124, 0.1);
+      border-color: rgba(232, 168, 124, 0.35);
+      color: var(--warm);
+    }
+    .home-btn-upload:hover { border-color: var(--warm); }
+    .home-btn-upload input { display: none; }
+    .home-section-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.85rem;
+      font-weight: 500;
+      text-align: center;
+    }
+    .font-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+      gap: 1rem;
+      flex: 1;
+      align-content: start;
+      padding-bottom: 1rem;
+    }
+    .font-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      padding: 1.35rem 1rem;
+      min-height: 148px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    }
+    .font-card:hover {
+      border-color: var(--border-focus);
+      background: var(--accent-soft);
+      transform: translateY(-2px);
+    }
+    .font-card-name {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+    .font-card-preview {
+      font-size: clamp(1.75rem, 5vw, 2.35rem);
+      color: var(--accent);
+      line-height: 1.2;
+    }
+    .font-card-preview-english {
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-weight: 500;
+    }
+    .font-card-preview-saved {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: clamp(2rem, 5vw, 2.5rem);
+    }
+    .font-card-preview-canvas {
+      display: block;
+      max-width: 100%;
+      height: clamp(1.75rem, 5vw, 2.35rem);
+      width: auto;
+      image-rendering: pixelated;
+      pointer-events: none;
+    }
+    .font-card-badge {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--warm);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(232, 168, 124, 0.12);
+    }
+    .font-card-badge-saved {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .font-card-saved {
+      position: relative;
+    }
+    .font-card-delete {
+      position: absolute;
+      top: 0.45rem;
+      right: 0.45rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-input);
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .font-card-delete:hover {
+      color: #e88;
+      border-color: rgba(232, 136, 136, 0.5);
+    }
+    .font-card-date {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      opacity: 0.75;
+    }
+    .home-loading, .home-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2rem;
+    }
+    .home-empty code {
+      color: var(--warm);
+      background: rgba(232, 168, 124, 0.1);
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+    }
+    .home-footer-row {
+      display: flex;
+      justify-content: center;
+      margin-top: auto;
+      padding: 1.25rem 0 0.5rem;
+    }
+    .home-btn-about {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+    .home-btn-about:hover {
+      color: var(--accent);
+      border-color: var(--border-focus);
+    }
+    .about-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background: rgba(6, 8, 12, 0.72);
+      backdrop-filter: blur(6px);
+    }
+    .about-dialog {
+      width: min(100%, 380px);
+      padding: 1.5rem 1.35rem 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+    .about-dialog h2 {
+      font-size: 1.05rem;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+    }
+    .about-dialog p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin: 0.35rem 0;
+    }
+    .about-creator {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .about-brand {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      margin: 1rem 0 0.85rem;
+      text-decoration: none;
+      color: var(--accent);
+      transition: opacity 0.15s;
+    }
+    .about-brand:hover { opacity: 0.88; }
+    .about-brand img {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 4px 20px rgba(139, 156, 255, 0.2);
+    }
+    .about-brand span {
+      font-size: 0.88rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .about-close {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .about-close:hover {
+      color: var(--accent);
+      border-color: var(--border-focus);
+    }
+
+    /* Toolbar */
+    .toolbar-back {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 32px;
+      flex-shrink: 0;
+    }
+    .toolbar-back:hover { color: var(--accent); border-color: var(--border-focus); }
+    .toolbar-save {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: 1px solid rgba(139, 156, 255, 0.35);
+      background: var(--accent-soft);
+      color: var(--accent);
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 32px;
+      flex-shrink: 0;
+    }
+    .toolbar-save:hover { border-color: var(--border-focus); filter: brightness(1.08); }
+    .toolbar-link-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.3rem 0.55rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-input);
+      user-select: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .toolbar-link-toggle input { accent-color: var(--accent); margin: 0; }
+    .toolbar-link-toggle:has(input:checked) {
+      color: var(--accent);
+      border-color: rgba(139, 156, 255, 0.35);
+      background: var(--accent-soft);
+    }
+    .field-label {
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 0.3rem; display: block;
+    }
+    .toolbar {
+      flex-shrink: 0; min-height: var(--toolbar-h);
+      display: flex; align-items: center; gap: 0.5rem 0.75rem; flex-wrap: wrap;
+      padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .toolbar-font { font-size: 0.85rem; color: var(--text-muted); min-width: 100px; }
+    .toolbar-font strong { color: var(--text); font-weight: 500; }
+    .variant-pills { display: flex; gap: 0.3rem; }
+    .variant-pill {
+      padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-muted); cursor: pointer; font-family: inherit;
+      min-height: 32px;
+    }
+    .variant-pill.active {
+      border-color: var(--border-focus); color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .toolbar-resolution {
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .toolbar-resolution select {
+      padding: 0.35rem 0.5rem; font-size: 0.78rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--accent); font-family: inherit;
+      min-height: 32px; cursor: pointer;
+    }
+    .toolbar-resolution select:focus { border-color: var(--border-focus); outline: none; }
+    .toolbar-weight { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+    .toolbar-weight input[type="range"] { width: 90px; }
+    .size-value { color: var(--accent); font-size: 0.78rem; min-width: 2rem; }
+    .variant-badge {
+      font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--warm); padding: 0.25rem 0.5rem;
+      background: rgba(232,168,124,0.1); border-radius: 4px;
+    }
+    .toggle { display: none; }
+
+  /* Tabs */
+    .tab-bar {
+      flex-shrink: 0; min-height: var(--tabs-h);
+      display: flex; gap: 0; padding: 0 0.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-btn {
+      padding: 0 0.85rem; min-height: var(--tabs-h); flex-shrink: 0;
+      border: none; background: transparent;
+      color: var(--text-muted); font-family: inherit; font-size: 0.8rem;
+      font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .tab-panel {
+      flex: 1; min-height: 0;
+      padding: 0.5rem 0.75rem;
+      display: none;
+    }
+    .tab-panel.active { display: flex; flex-direction: column; }
+    .tab-panel.scroll-panel.active { overflow-y: auto; display: block; }
+
+    /* Scrollable canvas preview regions — canvas keeps native size */
+    .preview-scroll-box {
+      flex: 1 1 auto;
+      min-height: 100px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.65rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .preview-scroll-box canvas {
+      display: block;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+      max-width: none;
+      max-height: none;
+    }
+
+    /* Draw tab — fill viewport */
+    .draw-layout {
+      flex: 1; min-height: 0;
+      display: grid; gap: 0.65rem;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+    .draw-sidebar {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      min-height: 0;
+    }
+    .draw-editor-col {
+      display: flex; flex-direction: column;
+      min-height: 0; flex: 1;
+    }
+    @media (min-width: 640px) {
+      .draw-layout {
+        grid-template-columns: minmax(188px, 20vw) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+      }
+      .draw-sidebar {
+        overflow: hidden;
+        max-height: 100%;
+        height: 100%;
+      }
+    }
+    @media (orientation: landscape) and (max-height: 520px) {
+      .draw-layout {
+        grid-template-columns: minmax(176px, 18vw) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+      }
+    }
+    .char-picker {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      overflow-y: auto;
+    }
+    .char-section {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .char-section-label {
+      font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); display: block; margin-bottom: 0.15rem;
+      flex-shrink: 0;
+    }
+    .char-section-row {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 0.25rem;
+      align-content: start;
+    }
+    .char-btn {
+      width: 100%;
+      aspect-ratio: 1;
+      min-height: 0;
+      max-height: 46px;
+      padding: 0.1rem 0.12rem 0.14rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
+      text-align: center; color: var(--text-muted); font-family: inherit;
+      font-size: clamp(0.62rem, 1.6vw, 0.8rem);
+      font-weight: 500;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      gap: 0.08rem;
+    }
+    .char-btn.active { border-color: var(--border-focus); color: var(--accent); background: var(--accent-soft); }
+    .char-mini-slot {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-height: 62%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+    .char-mini {
+      display: block;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+      pointer-events: none;
+      width: 30px;
+      height: 30px;
+    }
+    .char-glyph {
+      line-height: 1;
+      font-size: clamp(0.58rem, 2.2vw, 0.76rem);
+      font-weight: 600;
+      color: var(--accent);
+      opacity: 0.95;
+      flex-shrink: 0;
+    }
+    .char-lbl { display: none; }
+    .draw-sidebar-tools {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 0.35rem;
+      margin-top: auto;
+    }
+    @media (max-width: 639px) {
+      .char-picker { overflow-y: auto; max-height: min(38vh, 280px); }
+      .char-section-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .char-btn { max-height: 44px; }
+    }
+
+    /* Language tab */
+    .language-layout {
+      flex: 1; min-height: 0;
+      display: grid; gap: 0.65rem;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+    @media (min-width: 900px) {
+      .language-layout {
+        grid-template-columns: minmax(180px, 220px) 1fr;
+        grid-template-rows: 1fr;
+      }
+    }
+    .language-list-col {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      min-height: 0;
+    }
+    .language-list {
+      display: flex; flex-direction: column; gap: 0.35rem;
+      overflow-y: auto; flex: 1; min-height: 0;
+    }
+    .lang-item {
+      text-align: left; padding: 0.55rem 0.65rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; font-family: inherit; color: var(--text-muted);
+    }
+    .lang-item.active { border-color: var(--border-focus); color: var(--accent); background: var(--accent-soft); }
+    .lang-item-name { display: block; font-size: 0.85rem; font-weight: 500; }
+    .lang-item-meta { display: block; font-size: 0.68rem; opacity: 0.7; margin-top: 0.15rem; }
+    .language-editor-col {
+      overflow-y: auto; min-height: 0;
+      display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .lang-panel {
+      padding: 0.75rem; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .lang-panel h4 {
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 0.55rem; font-weight: 500;
+    }
+    .lang-grid-2 {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.5rem;
+    }
+    .lang-field label { display: block; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 0.2rem; }
+    .lang-field input, .lang-field select, .lang-input, .lang-textarea {
+      width: 100%; padding: 0.4rem 0.55rem;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.82rem;
+    }
+    .lang-textarea { min-height: 72px; resize: vertical; }
+    .lang-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .lang-table th, .lang-table td { padding: 0.35rem 0.4rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .lang-table th { color: var(--text-muted); font-weight: 500; font-size: 0.68rem; }
+    .map-from { font-weight: 600; color: var(--accent); width: 2rem; }
+    .map-input { max-width: 4rem; }
+    .ghost-btn.sm { padding: 0.2rem 0.45rem; min-height: 28px; font-size: 0.85rem; }
+    .lang-preview-box {
+      padding: 0.65rem; background: var(--bg-elevated);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      display: flex; flex-direction: column; gap: 0.45rem;
+      min-height: 0;
+    }
+    .lang-preview-box .preview-scroll-box {
+      flex: 1 1 auto;
+      min-height: 88px;
+      max-height: min(320px, 38vh);
+      margin-top: 0.15rem;
+    }
+    #langPreviewCanvas { margin: 0; }
+    .lang-translated { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; word-break: break-all; }
+    .tool-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.65rem 0; }
+    .tool-btn {
+      padding: 0.4rem 0.75rem; min-height: 36px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input); color: var(--text-muted); font-size: 0.75rem; cursor: pointer;
+    }
+    .tool-btn.active { border-color: var(--border-focus); color: var(--accent); }
+    .pixel-wrap {
+      flex: 1; min-height: 0;
+      display: flex; justify-content: center; align-items: center;
+      padding: 0.2rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: auto;
+      touch-action: none;
+    }
+    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; }
+    input[type="range"] { accent-color: var(--accent); }
+    input[type="number"] {
+      width: 48px; padding: 0.2rem 0.3rem; font-size: 0.75rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--accent); font-family: inherit;
+    }
+
+    /* Preview tab */
+    .preview-panel.active {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      gap: 0.5rem;
+    }
+    .preview-fixed {
+      flex-shrink: 0;
+    }
+    .preview-panel .preview-scroll-box {
+      flex: 1 1 auto;
+      min-height: 120px;
+      max-height: none;
+    }
+    .hero-box {
+      text-align: center; padding: 0.85rem;
+      background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .hero-english { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+    #heroCanvas { display: block; margin: 0.5rem auto 0; image-rendering: pixelated; }
+    .hero-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; }
+    .type-area {
+      width: 100%; min-height: 64px; padding: 0.65rem 0.85rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); resize: vertical; outline: none;
+      font-family: inherit; font-size: 0.9rem;
+    }
+    .type-area:focus { border-color: var(--border-focus); }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.65rem 0; }
+    .control-group { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+    .chip {
+      padding: 0.25rem 0.55rem; font-size: 0.68rem; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-muted); cursor: pointer;
+    }
+    .chip:hover { color: var(--accent); border-color: var(--border-focus); }
+
+    /* Layout tab — fixed preview pane + scrollable controls */
+    .layout-panel.active {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .layout-shell {
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      .layout-shell {
+        flex-direction: row;
+        gap: 0.75rem;
+        align-items: stretch;
+      }
+      .layout-preview-col {
+        flex: 1.4;
+        min-width: 0;
+        max-height: none;
+        min-height: 0;
+      }
+      .layout-controls-col {
+        flex: 1; min-width: 240px; max-width: 420px;
+        overflow-y: auto;
+      }
+      .line-preview-stage {
+        min-height: 240px;
+      }
+    }
+    @media (orientation: landscape) and (max-height: 520px) {
+      .layout-shell { flex-direction: row; gap: 0.5rem; }
+      .layout-preview-col { flex: 1.5; min-width: 0; }
+      .layout-controls-col {
+        flex: 1; min-width: 200px; max-width: 360px;
+        overflow-y: auto;
+      }
+      .layout-grid { grid-template-columns: 1fr; }
+    }
+    .layout-preview-col {
+      display: flex; flex-direction: column;
+      min-height: 0;
+      flex: 1 1 55%;
+      max-height: 58vh;
+    }
+    .layout-type-area {
+      min-height: 52px;
+      max-height: 88px;
+      resize: vertical;
+      margin-bottom: 0.35rem;
+    }
+    .line-preview-stage {
+      flex: 1 1 auto;
+      min-height: 200px;
+      display: block;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.65rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius);
+      touch-action: pan-x pan-y;
+    }
+    #linePreviewCanvas {
+      display: block;
+      cursor: grab;
+      image-rendering: pixelated;
+      touch-action: none;
+    }
+    #linePreviewCanvas:active { cursor: grabbing; }
+    .layout-controls-col {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .metrics-header { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 0.85rem; }
+    .metrics-char { font-family: "Instrument Serif", serif; font-size: 1.25rem; color: var(--accent); }
+    .nudge-pad { display: grid; grid-template-columns: repeat(3, 36px); gap: 0.3rem; }
+    .nudge-btn {
+      width: 40px; height: 40px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--accent); cursor: pointer; font-size: 1rem;
+    }
+    .nudge-btn.wide { grid-column: span 3; height: 30px; font-size: 0.65rem; }
+    .layout-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+    .layout-grid .control-group { flex-direction: column; align-items: stretch; gap: 0.3rem; }
+    .layout-grid input[type="range"] { width: 100%; }
+    .metrics-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+    .ghost-btn {
+      padding: 0.35rem 0.7rem; font-size: 0.72rem; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-muted); cursor: pointer;
+    }
+    .ghost-btn:hover { color: var(--accent); border-color: var(--border-focus); }
+
+    /* Gallery */
+    .glyph-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 0.45rem;
+    }
+    .glyph-cell {
+      text-align: center; padding: 0.4rem; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    }
+    .glyph-cell:hover { border-color: var(--border-focus); }
+    .glyph-mini { display: block; margin: 0 auto; width: 64px; height: 56px; image-rendering: pixelated; }
+    .glyph-label { font-size: 0.76rem; font-weight: 600; color: var(--accent); margin-top: 0.25rem; display: block; }
+    .chart-block h3 {
+      font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-muted); margin: 0.85rem 0 0.5rem;
+    }
+
+    /* Export */
+    .export-panel { text-align: center; padding: 2rem 1rem; }
+    .export-btn {
+      padding: 0.85rem 2rem; font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #6b7fd4);
+      border: none; border-radius: var(--radius); color: var(--bg-deep);
+      box-shadow: 0 4px 24px rgba(139, 156, 255, 0.3);
+    }
+    .export-btn:hover { filter: brightness(1.06); }
+    .export-btn:disabled { opacity: 0.5; cursor: wait; }
+
+    .hint { font-size: 0.72rem; color: var(--text-muted); }
+    .hint code { color: var(--warm); background: rgba(232,168,124,0.1); padding: 0.1rem 0.25rem; border-radius: 3px; }
+    .how-to-panel {
+      background: rgba(139, 156, 255, 0.06);
+      border: 1px solid rgba(139, 156, 255, 0.18);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+    .how-to-panel h4 {
+      margin: 0 0 0.5rem;
+      font-size: 0.82rem;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .how-to-panel ol, .how-to-panel ul {
+      margin: 0.35rem 0 0;
+      padding-left: 1.2rem;
+    }
+    .how-to-panel li { margin-bottom: 0.35rem; }
+    .how-to-panel li:last-child { margin-bottom: 0; }
+
+    /* Guide tab */
+    .guide-panel {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.25rem 0.35rem 1rem;
+    }
+    .guide-section {
+      margin-bottom: 1.35rem;
+      padding: 0.85rem 1rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .guide-section h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.55rem;
+      font-weight: 600;
+    }
+    .guide-section h4 {
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0.85rem 0 0.4rem;
+      font-weight: 500;
+    }
+    .guide-section p, .guide-section li {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .guide-section ul, .guide-section ol {
+      margin: 0.35rem 0 0;
+      padding-left: 1.25rem;
+    }
+    .guide-section li { margin-bottom: 0.35rem; }
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 0.5rem;
+    }
+    .guide-table th, .guide-table td {
+      padding: 0.45rem 0.55rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .guide-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .guide-yes { color: #8bdfa8; font-weight: 600; }
+    .guide-no { color: #dfa88b; font-weight: 600; }
+    .guide-partial { color: var(--warm); font-weight: 600; }
+    .loading, .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); }
+    .loading-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(9,11,16,0.9); display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .loading-overlay[hidden] { display: none; }
+    .spinner {
+      width: 36px; height: 36px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-bottom: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 639px) and (orientation: portrait) {
+      .toolbar-font { display: none; }
+      .variant-pills { order: 3; width: 100%; justify-content: center; }
+      .toolbar-resolution { order: 4; width: 100%; justify-content: center; }
+      .toolbar-weight { order: 5; margin-left: 0; width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+
+  <div class="app-shell">
+    <div id="home" class="home-screen">
+      <div class="home-hero">
+        <h1 class="home-title">Font Maker</h1>
+        <p class="home-subtitle">Pixel editor &amp; TTF export</p>
+      </div>
+      <div id="homeLoading" class="home-loading">
+        <div class="spinner"></div>
+        <p style="margin-top:0.75rem">Loading font catalog…</p>
+      </div>
+      <div id="homeEmpty" class="home-empty" hidden>
+        <p>No fonts found. Run <code>python serve.py</code> to generate Eldaraure in <code>fonts/</code></p>
+      </div>
+      <div id="homeContent" class="home-content" hidden>
+        <div class="home-actions-row">
+          <button type="button" class="home-btn home-btn-primary" id="newBlankFontBtn">+ Create blank font</button>
+          <label class="home-btn home-btn-upload">Upload .ttf / .otf<input type="file" id="fontUpload" accept=".ttf,.otf" /></label>
+        </div>
+        <h2 class="home-section-title">Open a font</h2>
+        <div class="font-card-grid" id="fontGallery"></div>
+        <h2 class="home-section-title" id="savedFontsTitle" hidden>Saved fonts</h2>
+        <div class="font-card-grid" id="savedFontGallery"></div>
+        <div class="home-footer-row">
+          <button type="button" class="home-btn home-btn-about" id="aboutBtn">About</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="aboutOverlay" class="about-overlay" hidden>
+      <div class="about-dialog" role="dialog" aria-labelledby="aboutTitle" aria-modal="true">
+        <h2 id="aboutTitle">Font Maker</h2>
+        <p>Pixel font editor &amp; TTF export</p>
+        <p>Created by <span class="about-creator">Andrew Meehan</span></p>
+        <a class="about-brand" href="https://502coderiver.com" target="_blank" rel="noopener noreferrer">
+          <img src="images/502_code_river_circle_400.png" alt="502 Code River logo" width="72" height="72" />
+          <span>502coderiver.com</span>
+        </a>
+        <button type="button" class="about-close" id="aboutCloseBtn">Close</button>
+      </div>
+    </div>
+
+    <div id="main" hidden>
+      <div class="toolbar">
+        <button type="button" class="toolbar-back" id="backToMenuBtn" title="Back to main menu">← Menu</button>
+        <button type="button" class="toolbar-save" id="saveFontBtn" title="Save font to this browser">Save</button>
+        <div class="toolbar-font">Editing <strong id="heroEnglish">—</strong></div>
+        <label class="toolbar-link-toggle" title="When on, glyph edits apply to all styles (Regular, Italic, Bold, Bold Italic)">
+          <input type="checkbox" id="linkVariants" checked />
+          <span>Link styles</span>
+        </label>
+        <div class="variant-pills">
+          <button type="button" class="variant-pill active" data-variant-btn="regular">Regular</button>
+          <button type="button" class="variant-pill" data-variant-btn="italic">Italic</button>
+          <button type="button" class="variant-pill" data-variant-btn="bold">Bold</button>
+          <button type="button" class="variant-pill" data-variant-btn="boldItalic">Bold Italic</button>
+        </div>
+        <input type="checkbox" id="toggleBold" hidden />
+        <input type="checkbox" id="toggleItalic" hidden />
+        <span class="variant-badge" id="variantBadge">Regular</span>
+        <div class="toolbar-resolution">
+          <span class="field-label" style="margin:0">Editor</span>
+          <select id="editorResolutionSelect" aria-label="Editor cell size"></select>
+          <span class="size-value" id="editorResolutionVal">6px/cell</span>
+        </div>
+        <div class="toolbar-resolution">
+          <span class="field-label" style="margin:0">Preview</span>
+          <select id="resolutionSelect" aria-label="Preview resolution"></select>
+        </div>
+        <div class="toolbar-weight">
+          <span class="field-label" style="margin:0">Weight</span>
+          <input type="range" id="weightSlider" min="100" max="900" value="400" step="50" />
+          <input type="number" id="weightNum" min="100" max="900" step="50" value="400" aria-label="Weight value" />
+          <span class="size-value" id="weightVal">400</span>
+        </div>
+      </div>
+
+      <nav class="tab-bar" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="draw" role="tab">Draw</button>
+        <button type="button" class="tab-btn" data-tab="preview" role="tab">Preview</button>
+        <button type="button" class="tab-btn" data-tab="layout" role="tab">Layout</button>
+        <button type="button" class="tab-btn" data-tab="gallery" role="tab">Gallery</button>
+        <button type="button" class="tab-btn" data-tab="language" role="tab">Language</button>
+        <button type="button" class="tab-btn" data-tab="guide" role="tab">Guide</button>
+        <button type="button" class="tab-btn" data-tab="export" role="tab">Export</button>
+      </nav>
+
+      <div class="tab-body">
+        <!-- DRAW -->
+        <div class="tab-panel active" data-tab-panel="draw" role="tabpanel">
+          <div class="draw-layout">
+            <aside class="draw-sidebar">
+              <span class="field-label">Characters</span>
+              <div class="char-picker" id="charPicker"></div>
+              <div class="draw-sidebar-tools">
+                <div class="tool-row">
+                  <button type="button" class="tool-btn active" data-tool="pen">Draw</button>
+                  <button type="button" class="tool-btn" data-tool="erase">Erase</button>
+                  <button type="button" class="tool-btn" id="clearGrid">Clear</button>
+                  <button type="button" class="tool-btn" id="fillGrid">Fill</button>
+                </div>
+                <div class="tool-row">
+                  <span class="field-label" style="margin:0">Zoom</span>
+                  <input type="range" id="pixelZoom" min="40" max="400" value="100" step="5" />
+                  <span class="size-value" id="pixelZoomVal">100%</span>
+                </div>
+                <p class="hint" id="editorHint">Editing <strong id="editCharLabel">A</strong> · linked across all styles</p>
+              </div>
+            </aside>
+            <div class="draw-editor-col">
+              <div class="pixel-wrap">
+                <canvas id="pixelCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="tab-panel preview-panel" data-tab-panel="preview" role="tabpanel" hidden>
+          <div class="preview-fixed">
+            <div class="hero-box">
+              <div class="hero-english">Sample</div>
+              <canvas id="heroCanvas"></canvas>
+              <div class="hero-sub" id="heroSub"></div>
+            </div>
+            <span class="field-label">Sample text</span>
+            <textarea id="typeArea" class="type-area" spellcheck="false">The quick brown fox jumps. Hello, world! (test) [ok] @ # &amp; * + / = 1234567890</textarea>
+            <div class="controls">
+              <span class="field-label" style="margin:0">Size</span>
+              <input type="range" id="sizeSlider" min="24" max="160" value="96" step="1" />
+              <input type="number" id="sizeNum" min="24" max="160" step="1" value="96" aria-label="Preview size" />
+              <span class="size-value" id="sizeValue">96px</span>
+              <div class="sample-chips" id="sampleChips"></div>
+            </div>
+            <p class="hint" style="margin:0 0 0.5rem">Letter and word spacing are saved into the exported <code>.ttf</code> files. See the <strong>Guide</strong> tab for what is and isn’t exported.</p>
+            <div class="controls">
+              <div class="control-group">
+                <span class="field-label" for="letterSpacing">Letter</span>
+                <input type="range" id="letterSpacing" min="-12" max="40" value="0" step="1" />
+                <input type="number" id="letterSpacingNum" min="-12" max="40" value="0" />
+                <span class="size-value" id="letterSpacingVal">0</span>
+              </div>
+              <div class="control-group">
+                <span class="field-label" for="wordSpacing">Word</span>
+                <input type="range" id="wordSpacing" min="-8" max="48" value="4" step="1" />
+                <input type="number" id="wordSpacingNum" min="-8" max="48" value="4" />
+                <span class="size-value" id="wordSpacingVal">4</span>
+              </div>
+            </div>
+          </div>
+          <div class="preview-scroll-box">
+            <canvas id="previewCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- LAYOUT -->
+        <div class="tab-panel layout-panel" data-tab-panel="layout" role="tabpanel" hidden>
+          <div class="layout-shell">
+            <div class="layout-preview-col">
+              <p class="hint">Click or drag letters to reposition — scroll the preview if text is larger than the pane</p>
+              <span class="field-label">Layout sample text</span>
+              <textarea id="layoutTypeArea" class="type-area layout-type-area" spellcheck="false">The quick brown fox jumps. Hello, world! (test) [ok] @ # &amp; * + / = 1234567890</textarea>
+              <div class="controls" style="margin-top:0">
+                <span class="field-label" style="margin:0">Preview size</span>
+                <input type="range" id="linePreviewSize" min="64" max="240" value="112" />
+                <span class="size-value" id="linePreviewSizeVal">112px</span>
+              </div>
+              <div class="line-preview-stage">
+                <canvas id="linePreviewCanvas"></canvas>
+              </div>
+            </div>
+            <div class="layout-controls-col">
+              <div class="how-to-panel">
+                <p class="hint" style="margin:0">Per-letter layout vs export behavior is documented in the <strong>Guide</strong> tab.</p>
+              </div>
+              <div class="metrics-header">
+                <span class="metrics-char">Letter <span id="metricsCharLabel">A</span></span>
+                <div class="nudge-pad">
+                  <span></span><button type="button" class="nudge-btn" id="nudgeUp">↑</button><span></span>
+                  <button type="button" class="nudge-btn" id="nudgeLeft">←</button>
+                  <button type="button" class="nudge-btn wide">Move</button>
+                  <button type="button" class="nudge-btn" id="nudgeRight">→</button>
+                  <span></span><button type="button" class="nudge-btn" id="nudgeDown">↓</button><span></span>
+                </div>
+              </div>
+              <div class="layout-grid">
+                <div class="control-group">
+                  <span class="field-label" for="glyphScale">Letter size</span>
+                  <input type="range" id="glyphScale" min="50" max="150" value="100" />
+                  <span class="size-value" id="glyphScaleVal">100%</span>
+                </div>
+                <div class="control-group">
+                  <span class="field-label" for="offsetX">Left / right</span>
+                  <input type="range" id="offsetX" min="-16" max="16" value="0" />
+                  <div style="display:flex;gap:0.4rem;align-items:center">
+                    <input type="number" id="offsetXNum" min="-16" max="16" value="0" />
+                    <span class="size-value" id="offsetXVal">0</span>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <span class="field-label" for="offsetY">Up / down</span>
+                  <input type="range" id="offsetY" min="-16" max="16" value="0" />
+                  <div style="display:flex;gap:0.4rem;align-items:center">
+                    <input type="number" id="offsetYNum" min="-16" max="16" value="0" />
+                    <span class="size-value" id="offsetYVal">0</span>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <span class="field-label" for="advanceAdjust">Spacing after</span>
+                  <input type="range" id="advanceAdjust" min="-12" max="24" value="0" />
+                  <div style="display:flex;gap:0.4rem;align-items:center">
+                    <input type="number" id="advanceAdjustNum" min="-12" max="24" value="0" />
+                    <span class="size-value" id="advanceAdjustVal">0</span>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <span class="field-label" for="lineShiftX">Line ↔</span>
+                  <input type="range" id="lineShiftX" min="-24" max="24" value="0" />
+                  <span class="size-value" id="lineShiftXVal">0</span>
+                </div>
+                <div class="control-group">
+                  <span class="field-label" for="lineShiftY">Line ↕</span>
+                  <input type="range" id="lineShiftY" min="-20" max="20" value="0" />
+                  <span class="size-value" id="lineShiftYVal">0</span>
+                </div>
+              </div>
+              <div class="metrics-actions">
+                <button type="button" class="ghost-btn" id="resetGlyphMetrics">Reset letter</button>
+                <button type="button" class="ghost-btn" id="copyGlyphMetrics">Copy to all</button>
+                <button type="button" class="ghost-btn" id="resetLayout">Reset all</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GALLERY -->
+        <div class="tab-panel scroll-panel" data-tab-panel="gallery" role="tabpanel" hidden>
+          <div class="chart-block">
+            <h3>Uppercase A – Z</h3>
+            <div class="glyph-grid" id="letterChart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>Lowercase a – z</h3>
+            <div class="glyph-grid" id="lowerChart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>Numbers 1 – 10</h3>
+            <div class="glyph-grid" id="numberChart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>Special characters</h3>
+            <div class="glyph-grid" id="specialChart"></div>
+          </div>
+        </div>
+
+        <!-- LANGUAGE -->
+        <div class="tab-panel" data-tab-panel="language" role="tabpanel" hidden>
+          <div class="language-layout">
+            <div class="language-list-col">
+              <span class="field-label">Languages</span>
+              <div class="language-list" id="languageList"></div>
+              <div class="tool-row" style="margin:0">
+                <button type="button" class="tool-btn" id="addLanguageBtn">+ Add</button>
+                <button type="button" class="tool-btn" id="deleteLanguageBtn">Delete</button>
+              </div>
+            </div>
+            <div class="language-editor-col">
+              <div class="how-to-panel">
+                <p class="hint" style="margin:0">Language rules, syntax, and export behavior are explained in the <strong>Guide</strong> tab.</p>
+              </div>
+              <div class="lang-panel">
+                <h4>Language details</h4>
+                <div class="lang-grid-2">
+                  <div class="lang-field">
+                    <label for="langName">Name</label>
+                    <input type="text" id="langName" placeholder="My Language" />
+                  </div>
+                  <div class="lang-field" style="grid-column:1/-1">
+                    <label for="langDescription">Description</label>
+                    <input type="text" id="langDescription" placeholder="Optional notes about grammar or usage" />
+                  </div>
+                </div>
+              </div>
+              <div class="lang-panel">
+                <h4>Syntax</h4>
+                <p class="hint" style="margin-bottom:0.5rem">Define punctuation and separators for your language.</p>
+                <div class="lang-grid-2">
+                  <div class="lang-field"><label for="synWordSep">Word separator</label><input type="text" id="synWordSep" maxlength="3" /></div>
+                  <div class="lang-field"><label for="synSentenceEnd">Sentence end</label><input type="text" id="synSentenceEnd" maxlength="3" /></div>
+                  <div class="lang-field"><label for="synClauseSep">Clause / pause</label><input type="text" id="synClauseSep" maxlength="3" /></div>
+                  <div class="lang-field"><label for="synQuestion">Question</label><input type="text" id="synQuestion" maxlength="3" /></div>
+                  <div class="lang-field"><label for="synExclamation">Exclamation</label><input type="text" id="synExclamation" maxlength="3" /></div>
+                  <div class="lang-field"><label for="synDirection">Direction</label>
+                    <select id="synDirection"><option value="ltr">Left to right</option><option value="rtl">Right to left</option></select>
+                  </div>
+                  <div class="lang-field"><label for="synQuoteOpen">Quote open</label><input type="text" id="synQuoteOpen" maxlength="2" /></div>
+                  <div class="lang-field"><label for="synQuoteClose">Quote close</label><input type="text" id="synQuoteClose" maxlength="2" /></div>
+                </div>
+              </div>
+              <div class="lang-panel">
+                <h4>Custom syntax</h4>
+                <p class="hint" style="margin-bottom:0.5rem">Add named tokens that map to symbols in preview (e.g. <code>...</code> → <code>…</code>).</p>
+                <table class="lang-table"><thead><tr><th>Token / name</th><th>Symbol</th><th></th></tr></thead><tbody id="customSyntaxBody"></tbody></table>
+                <button type="button" class="ghost-btn" id="addCustomSyntaxBtn" style="margin-top:0.5rem">+ Add syntax</button>
+              </div>
+              <div class="lang-panel">
+                <h4>Character mapping</h4>
+                <p class="hint" style="margin-bottom:0.5rem">Map typed characters to different glyphs in your font.</p>
+                <table class="lang-table"><thead><tr><th>Input</th><th>Glyph</th></tr></thead><tbody id="charMapBody"></tbody></table>
+              </div>
+              <div class="lang-panel">
+                <h4>Transliteration rules</h4>
+                <table class="lang-table"><thead><tr><th>From</th><th>To glyphs</th><th></th></tr></thead><tbody id="translitBody"></tbody></table>
+                <button type="button" class="ghost-btn" id="addTranslitBtn" style="margin-top:0.5rem">+ Add rule</button>
+              </div>
+              <div class="lang-panel lang-preview-box">
+                <h4>Language preview</h4>
+                <textarea id="langTypeArea" class="lang-textarea" spellcheck="false">Hello, world! How are you? (yes) [test] @ home; quote: "hi". Special: . , ! ? ; : ' " - ( ) [ ] @ # &amp; * + / =</textarea>
+                <div class="controls" style="margin:0.5rem 0 0">
+                  <span class="field-label" style="margin:0">Size</span>
+                  <input type="range" id="langPreviewSize" min="32" max="128" value="64" />
+                  <span class="size-value" id="langPreviewSizeVal">64px</span>
+                </div>
+                <p class="lang-translated">Glyphs: <span id="langTranslated">—</span></p>
+                <div class="preview-scroll-box">
+                  <canvas id="langPreviewCanvas"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GUIDE -->
+        <div class="tab-panel scroll-panel" data-tab-panel="guide" role="tabpanel" hidden>
+          <div class="guide-panel">
+            <div class="guide-section">
+              <h3>Welcome to Font Maker</h3>
+              <p>Font Maker is a pixel-font editor. You draw glyphs on a 72×96 grid, preview text, tune spacing and per-letter layout, define custom language rules, and export a ZIP with TrueType fonts plus settings files.</p>
+              <p style="margin-top:0.5rem">Run locally with <code>python serve.py</code> then open <code>http://localhost:8765/</code>.</p>
+            </div>
+
+            <div class="guide-section">
+              <h3>Included fonts</h3>
+              <ul>
+                <li><strong>English Base</strong> — built-in reference font rasterized from DM Sans. Uppercase, lowercase, digits, and special characters. Good for comparison while designing.</li>
+                <li><strong>Eldaraure</strong> — custom display font in <code>fonts/</code> (Elvish + Aurebesh inspired). Includes Regular, Italic, Bold, and Bold Italic. Key <code>0</code> renders <strong>ten</strong>; keys <code>1</code>–<code>9</code> render one through nine.</li>
+              </ul>
+            </div>
+
+            <div class="guide-section">
+              <h3>Draw tab</h3>
+              <p>Edit one character at a time on the pixel grid. Changes sync to all four style variants (Regular, Italic, Bold, Bold Italic) — you draw once, the engine derives weight and slant for preview and export.</p>
+              <h4>Editor sizing</h4>
+              <ul>
+                <li>The grid auto-fits to fill the editor pane. Use the <strong>Zoom</strong> slider for manual control.</li>
+                <li><strong>Editor</strong> resolution (toolbar) changes cell size on the grid — higher px/cell = coarser pixels.</li>
+                <li><strong>Italic</strong> and <strong>Bold Italic</strong> preview slant inside the grid — ink is clipped to the grid lines so nothing draws outside the editable area.</li>
+              </ul>
+            </div>
+
+            <div class="guide-section">
+              <h3>Main menu</h3>
+              <p>The home screen is separate from the editor. Choose an existing font, <strong>Create blank font</strong> for an empty 72×96 template, or upload a <code>.ttf</code> / <code>.otf</code>. Use <strong>← Menu</strong> in the toolbar to return without losing your session until you reload the page.</p>
+            </div>
+
+            <div class="guide-section">
+              <h3>Preview tab</h3>
+              <p>Type sample text and see it rendered with your font. Letter and word spacing sliders affect both the preview and the exported <code>.ttf</code> files.</p>
+              <p>The <strong>Size</strong> slider only changes how large the preview is drawn on screen — it does not change glyph design or export size.</p>
+            </div>
+
+            <div class="guide-section">
+              <h3>Layout tab</h3>
+              <p>Has its own sample text (separate from Preview). Click or drag letters in the preview to select them, then adjust per-letter metrics:</p>
+              <ul>
+                <li><strong>Letter size</strong> (glyph scale) — scales ink in previews and is baked into exported outlines.</li>
+                <li><strong>Left / right</strong> and <strong>Up / down</strong> — move the glyph inside its slot; baked into <code>.ttf</code> positions.</li>
+                <li><strong>Spacing after</strong> (advance adjust) — extra gap after this letter; baked into <code>.ttf</code> advance widths.</li>
+                <li><strong>Line ↔ / ↕</strong> — shifts the entire sample line for composition. Saved in <code>font-settings.json</code> only — not baked into individual glyphs.</li>
+              </ul>
+            </div>
+
+            <div class="guide-section">
+              <h3>Language tab</h3>
+              <p>Languages are <em>text transformation rules</em> applied when previewing or when your game loads <code>languages.json</code>. They are <strong>not</strong> embedded inside the <code>.ttf</code> glyph data.</p>
+              <h4>Rule order (applied in sequence)</h4>
+              <ol>
+                <li><strong>Transliteration</strong> — replace letter patterns (e.g. <code>th</code> → <code>TH</code>). Longest match wins.</li>
+                <li><strong>Syntax</strong> — maps standard punctuation to your language’s symbols; custom tokens replace named strings.</li>
+                <li><strong>Character map</strong> — remaps individual characters to different glyphs that must exist in your font.</li>
+              </ol>
+              <h4>Important</h4>
+              <ul>
+                <li>If a mapped glyph is not drawn in your font, the preview shows a blank for that character.</li>
+                <li>To use languages outside Font Maker, load <code>languages.json</code> and apply the same transform before rendering with the TTF.</li>
+                <li>Latin is prefilled as a starting template. Add languages with <strong>+ Add</strong>.</li>
+              </ul>
+            </div>
+
+            <div class="guide-section">
+              <h3>Gallery tab</h3>
+              <p>Glyph reference chart for the active style variant. Click a cell to jump to that character in the Draw tab.</p>
+            </div>
+
+            <div class="guide-section">
+              <h3>Export ZIP contents</h3>
+              <table class="guide-table">
+                <thead><tr><th>File</th><th>What it is</th></tr></thead>
+                <tbody>
+                  <tr><td><code>YourFont-Regular.ttf</code></td><td>TrueType font — Regular weight</td></tr>
+                  <tr><td><code>YourFont-Italic.ttf</code></td><td>Italic style</td></tr>
+                  <tr><td><code>YourFont-Bold.ttf</code></td><td>Bold weight</td></tr>
+                  <tr><td><code>YourFont-BoldItalic.ttf</code></td><td>Bold + Italic</td></tr>
+                  <tr><td><code>glyph-reference.png</code></td><td>PNG chart of all glyphs</td></tr>
+                  <tr><td><code>font-settings.json</code></td><td>Letter/word spacing, per-letter metrics, line shift, weight</td></tr>
+                  <tr><td><code>languages.json</code></td><td>All language definitions and active language id</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="guide-section">
+              <h3>What goes into the .ttf files?</h3>
+              <table class="guide-table">
+                <thead><tr><th>Setting</th><th>In .ttf?</th><th>Where else?</th></tr></thead>
+                <tbody>
+                  <tr><td>Pixel glyph shapes you drew</td><td class="guide-yes">Yes</td><td>—</td></tr>
+                  <tr><td>Per-letter offset (Layout move)</td><td class="guide-yes">Yes</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Per-letter scale (Layout size)</td><td class="guide-yes">Yes</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Per-letter advance adjust</td><td class="guide-yes">Yes</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Letter / word spacing (Preview)</td><td class="guide-yes">Yes</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Toolbar weight slider</td><td class="guide-yes">Yes</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Line ↔ / ↕ shift</td><td class="guide-no">No</td><td><code>font-settings.json</code></td></tr>
+                  <tr><td>Preview size sliders</td><td class="guide-no">No</td><td>Display only</td></tr>
+                  <tr><td>Language transliteration / char map</td><td class="guide-no">No</td><td><code>languages.json</code></td></tr>
+                  <tr><td>Language syntax rules</td><td class="guide-no">No</td><td><code>languages.json</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="guide-section">
+              <h3>Characters in every font</h3>
+              <p>Uppercase A–Z, lowercase a–z, digits 0–9 (where <code>0</code> = ten), and special characters:</p>
+              <p><code>. , ! ? ; : ' " - ( ) [ ] @ # &amp; * + / =</code></p>
+            </div>
+
+            <div class="guide-section">
+              <h3>Toolbar reference</h3>
+              <ul>
+                <li><strong>Regular / Italic / Bold / Bold Italic</strong> — preview style while editing. Drawing always edits the base grid shared by all variants.</li>
+                <li><strong>Editor</strong> — pixel cell size in the Draw tab grid.</li>
+                <li><strong>Preview</strong> — default resolution preset for Preview and Layout tabs.</li>
+                <li><strong>Weight</strong> — global stroke weight; affects bold rendering and export.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXPORT -->
+        <div class="tab-panel scroll-panel" data-tab-panel="export" role="tabpanel" hidden>
+          <div class="export-panel panel">
+            <p class="hint" style="margin-bottom:1rem">See the <strong>Guide</strong> tab for full export documentation.</p>
+            <button type="button" class="export-btn" id="exportBtn">Download Font Pack</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay" hidden>
+    <div class="spinner"></div>
+    <p id="loadingText">Loading…</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="font-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
