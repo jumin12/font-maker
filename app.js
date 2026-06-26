@@ -9,10 +9,18 @@
   let currentFamilyId = null;
   let selectedChar = "A";
   let editorGrid = FontEngine.createEmptyGrid();
-  let tool = "pen";
+  let drawEnabled = true;
+  let eraseEnabled = false;
+  let toolOrder = ["pen"];
   let isDrawing = false;
+  let drawStrokeTool = null;
   let isPanning = false;
   let panStart = null;
+  let editorView = { panX: 0, panY: 0, zoom: 1 };
+  let activePointers = new Map();
+  let pinchState = null;
+  const EDITOR_ZOOM_MIN = 0.2;
+  const EDITOR_ZOOM_MAX = 10;
   let lineHitRegions = [];
   let lineDrag = null;
   let lineDragMoved = false;
@@ -41,7 +49,7 @@
     document.querySelector(".app-shell").classList.add("workspace");
     updateMobileShell();
     requestAnimationFrame(() => {
-      fitEditorToView();
+      resetEditorViewFit();
     });
   }
 
@@ -439,46 +447,93 @@
     initWorkspaceFromFont({ displayName: name, name });
   }
 
-  function isDrawToolActive() {
-    return tool === "pen" || tool === "erase";
+  function syncToolToggleUI() {
+    document.querySelectorAll("[data-tool]").forEach((btn) => {
+      const on = btn.dataset.tool === "pen" ? drawEnabled : eraseEnabled;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function setToolEnabled(name, on) {
+    if (name === "pen") drawEnabled = on;
+    else eraseEnabled = on;
+    if (on) {
+      if (!toolOrder.includes(name)) toolOrder.push(name);
+    } else {
+      toolOrder = toolOrder.filter((t) => t !== name);
+    }
+    syncToolToggleUI();
+    updateEditorCursor();
+  }
+
+  function strokeToolForPointer(e) {
+    const penOn = drawEnabled;
+    const eraseOn = eraseEnabled;
+    if (!penOn && !eraseOn) return null;
+    const isRight = e.button === 2;
+    const isLeft = e.button === 0;
+    if (!isLeft && !isRight) return null;
+    if (penOn && !eraseOn) return isRight ? "erase" : "pen";
+    if (!penOn && eraseOn) return isRight ? "pen" : "erase";
+    const primary = toolOrder[0] === "erase" ? "erase" : "pen";
+    const secondary = primary === "pen" ? "erase" : "pen";
+    return isRight ? secondary : primary;
+  }
+
+  function applyEditorTransform() {
+    const stage = $("pixelStage");
+    if (!stage) return;
+    stage.style.transform = `translate(${editorView.panX}px, ${editorView.panY}px) scale(${editorView.zoom})`;
   }
 
   function updateEditorCursor() {
     const viewport = $("pixelViewport");
-    const canvas = $("pixelCanvas");
-    if (!viewport || !canvas) return;
-    const drawing = isDrawToolActive();
-    viewport.classList.toggle("can-draw", drawing);
+    if (!viewport) return;
     viewport.classList.toggle("is-panning", isPanning);
-    canvas.classList.toggle("draw-off", !drawing);
-    canvas.style.cursor = drawing ? (tool === "pen" ? "crosshair" : "cell") : "inherit";
   }
 
-  function centerEditorInView() {
+  function resetEditorViewFit() {
     const viewport = $("pixelViewport");
     const canvas = $("pixelCanvas");
-    if (!viewport || !canvas) return;
-    requestAnimationFrame(() => {
-      viewport.scrollLeft = Math.max(0, (canvas.offsetWidth - viewport.clientWidth) / 2);
-      viewport.scrollTop = Math.max(0, (canvas.offsetHeight - viewport.clientHeight) / 2);
-    });
-  }
-
-  function fitEditorToView() {
-    const viewport = $("pixelViewport");
-    if (!viewport || viewport.clientWidth < 40 || viewport.clientHeight < 40) return;
+    if (!viewport || !canvas || viewport.clientWidth < 40 || viewport.clientHeight < 40) return;
     const cell = fontData ? FontEngine.getEditorCellPx(fontData) : FontEngine.EDITOR_CELL_PX;
     const variant = currentVariant();
-    const { width, height } = FontEngine.editorCanvasPixelSize(fontData, variant, cell);
+    FontEngine.renderGridPreview(editorGrid, canvas, {
+      showGrid: true,
+      fg: "#a8c4ff",
+      displayScale: 1,
+      variant,
+      fontData,
+      cellSize: cell,
+    });
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
     const scale = Math.min(
-      (viewport.clientWidth - 8) / width,
-      (viewport.clientHeight - 8) / height
-    ) * 0.98;
-    const pct = Math.round(Math.max(40, Math.min(400, scale * 100)));
-    $("pixelZoom").value = pct;
-    $("pixelZoomVal").textContent = pct + "%";
-    drawEditor();
-    centerEditorInView();
+      (viewport.clientWidth - 16) / cw,
+      (viewport.clientHeight - 16) / ch,
+      1
+    );
+    editorView.zoom = Math.max(EDITOR_ZOOM_MIN, scale);
+    editorView.panX = Math.max(0, (viewport.clientWidth - cw * editorView.zoom) / 2);
+    editorView.panY = Math.max(0, (viewport.clientHeight - ch * editorView.zoom) / 2);
+    applyEditorTransform();
+  }
+
+  function zoomEditorAt(clientX, clientY, factor) {
+    const viewport = $("pixelViewport");
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    const vx = clientX - rect.left;
+    const vy = clientY - rect.top;
+    const wx = (vx - editorView.panX) / editorView.zoom;
+    const wy = (vy - editorView.panY) / editorView.zoom;
+    const nextZoom = Math.max(EDITOR_ZOOM_MIN, Math.min(EDITOR_ZOOM_MAX, editorView.zoom * factor));
+    if (nextZoom === editorView.zoom) return;
+    editorView.panX = vx - wx * nextZoom;
+    editorView.panY = vy - wy * nextZoom;
+    editorView.zoom = nextZoom;
+    applyEditorTransform();
   }
 
   function syncVariantUI() {
@@ -494,7 +549,7 @@
   }
 
   function editorDisplayScale() {
-    return parseInt($("pixelZoom").value, 10) / 100;
+    return 1;
   }
 
   function updateEditorHint() {
@@ -550,6 +605,7 @@
       fontData,
       cellSize: fontData ? FontEngine.getEditorCellPx(fontData) : FontEngine.EDITOR_CELL_PX,
     });
+    applyEditorTransform();
     paintCharMegaPreview();
     updateEditorCursor();
   }
@@ -1344,7 +1400,7 @@
     fontData.editorResolution = $("editorResolutionSelect").value;
     syncEditorResolutionUI();
     drawEditor();
-    fitEditorToView();
+    resetEditorViewFit();
   }
 
   function updateResolutionFromUI() {
@@ -1376,10 +1432,36 @@
     return null;
   }
 
-  function paintAt(x, y) {
-    editorGrid[y][x] = tool === "pen";
+  function paintAt(x, y, strokeTool) {
+    editorGrid[y][x] = strokeTool === "pen";
     drawEditor();
     syncGlyphEdits();
+  }
+
+  function pointerInEditor(e) {
+    const stage = $("pixelStage");
+    const canvas = $("pixelCanvas");
+    return stage?.contains(e.target) || canvas === e.target;
+  }
+
+  function beginPinchIfNeeded() {
+    if (activePointers.size !== 2) {
+      pinchState = null;
+      return;
+    }
+    const pts = [...activePointers.values()];
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+    pinchState = {
+      dist,
+      mid,
+      panX: editorView.panX,
+      panY: editorView.panY,
+      zoom: editorView.zoom,
+    };
+    isPanning = false;
+    isDrawing = false;
+    drawStrokeTool = null;
   }
 
   function setupEditor() {
@@ -1393,42 +1475,82 @@
     }
 
     const onPointerDown = (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
       if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
+      if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 2) return;
 
-      if (!isDrawToolActive()) {
-        if (e.target !== viewport && e.target !== canvas) return;
-        isPanning = true;
-        panStart = {
-          x: e.clientX,
-          y: e.clientY,
-          scrollLeft: viewport.scrollLeft,
-          scrollTop: viewport.scrollTop,
-        };
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        beginPinchIfNeeded();
         viewport.setPointerCapture(e.pointerId);
-        updateEditorCursor();
         return;
       }
 
-      if (e.target !== canvas) return;
-      canvas.setPointerCapture(e.pointerId);
-      isDrawing = true;
-      const cell = canvasCellFromEvent(e);
-      if (cell) paintAt(cell.x, cell.y);
+      const strokeTool = pointerInEditor(e) ? strokeToolForPointer(e) : null;
+      if (strokeTool) {
+        e.preventDefault();
+        isDrawing = true;
+        drawStrokeTool = strokeTool;
+        viewport.setPointerCapture(e.pointerId);
+        const cell = canvasCellFromEvent(e);
+        if (cell) paintAt(cell.x, cell.y, drawStrokeTool);
+        return;
+      }
+
+      if (e.button !== 0) return;
+      isPanning = true;
+      panStart = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: editorView.panX,
+        panY: editorView.panY,
+      };
+      viewport.setPointerCapture(e.pointerId);
+      updateEditorCursor();
     };
 
     const onPointerMove = (e) => {
-      if (isPanning && panStart) {
-        viewport.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
-        viewport.scrollTop = panStart.scrollTop - (e.clientY - panStart.y);
+      if (activePointers.has(e.pointerId)) {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      if (activePointers.size === 2 && pinchState) {
+        const pts = [...activePointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (pinchState.dist > 0) {
+          const rect = viewport.getBoundingClientRect();
+          const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+          const vx = mid.x - rect.left;
+          const vy = mid.y - rect.top;
+          const wx = (vx - pinchState.panX) / pinchState.zoom;
+          const wy = (vy - pinchState.panY) / pinchState.zoom;
+          const nextZoom = Math.max(
+            EDITOR_ZOOM_MIN,
+            Math.min(EDITOR_ZOOM_MAX, pinchState.zoom * (dist / pinchState.dist))
+          );
+          editorView.zoom = nextZoom;
+          editorView.panX = vx - wx * nextZoom;
+          editorView.panY = vy - wy * nextZoom;
+          applyEditorTransform();
+        }
         return;
       }
-      if (!isDrawing) return;
+
+      if (isPanning && panStart) {
+        editorView.panX = panStart.panX + (e.clientX - panStart.x);
+        editorView.panY = panStart.panY + (e.clientY - panStart.y);
+        applyEditorTransform();
+        return;
+      }
+
+      if (!isDrawing || !drawStrokeTool) return;
       const cell = canvasCellFromEvent(e);
-      if (cell) paintAt(cell.x, cell.y);
+      if (cell) paintAt(cell.x, cell.y, drawStrokeTool);
     };
 
     const endStroke = (e) => {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size < 2) pinchState = null;
+
       if (isPanning) {
         isPanning = false;
         panStart = null;
@@ -1436,46 +1558,44 @@
           viewport.releasePointerCapture(e.pointerId);
         }
         updateEditorCursor();
-        return;
       }
-      if (canvas.hasPointerCapture?.(e.pointerId)) {
-        canvas.releasePointerCapture(e.pointerId);
+      if (isDrawing) {
+        if (viewport.hasPointerCapture?.(e.pointerId)) {
+          viewport.releasePointerCapture(e.pointerId);
+        }
+        isDrawing = false;
+        drawStrokeTool = null;
       }
-      isDrawing = false;
     };
 
     viewport.addEventListener("pointerdown", onPointerDown);
     viewport.addEventListener("pointermove", onPointerMove);
     viewport.addEventListener("pointerup", endStroke);
     viewport.addEventListener("pointercancel", endStroke);
-    canvas.addEventListener("lostpointercapture", () => { isDrawing = false; });
     viewport.addEventListener("lostpointercapture", () => {
       isPanning = false;
       panStart = null;
+      isDrawing = false;
+      drawStrokeTool = null;
+      activePointers.clear();
+      pinchState = null;
       updateEditorCursor();
     });
 
     viewport.addEventListener("wheel", (e) => {
       if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
       e.preventDefault();
-      const rect = viewport.getBoundingClientRect();
-      const ox = e.clientX - rect.left + viewport.scrollLeft;
-      const oy = e.clientY - rect.top + viewport.scrollTop;
-      const old = parseInt($("pixelZoom").value, 10);
-      const step = e.deltaY > 0 ? -8 : 8;
-      const next = Math.max(40, Math.min(400, old + step));
-      if (next === old) return;
-      $("pixelZoom").value = next;
-      $("pixelZoomVal").textContent = next + "%";
-      drawEditor();
-      requestAnimationFrame(() => {
-        const ratio = next / old;
-        viewport.scrollLeft = Math.max(0, ox * ratio - (e.clientX - rect.left));
-        viewport.scrollTop = Math.max(0, oy * ratio - (e.clientY - rect.top));
-      });
+      const factor = e.deltaY > 0 ? 0.92 : 1.08;
+      zoomEditorAt(e.clientX, e.clientY, factor);
     }, { passive: false });
 
     updateEditorCursor();
+  }
+
+  function setupContextMenu() {
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
   }
 
   function setupLinePreview() {
@@ -1525,18 +1645,11 @@
   function setupTools() {
     document.querySelectorAll("[data-tool]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const t = btn.dataset.tool;
-        tool = tool === t ? null : t;
-        document.querySelectorAll("[data-tool]").forEach((b) => {
-          const on = b.dataset.tool === tool;
-          b.classList.toggle("active", on);
-          b.setAttribute("aria-pressed", on ? "true" : "false");
-        });
-        updateEditorCursor();
+        const name = btn.dataset.tool;
+        const on = name === "pen" ? !drawEnabled : !eraseEnabled;
+        setToolEnabled(name, on);
       });
     });
-
-    $("fitEditorBtn")?.addEventListener("click", fitEditorToView);
 
     $("clearGrid").addEventListener("click", () => {
       editorGrid = FontEngine.createEmptyGrid();
@@ -1548,11 +1661,6 @@
       editorGrid = editorGrid.map((row) => row.map(() => true));
       drawEditor();
       syncGlyphEdits();
-    });
-
-    $("pixelZoom").addEventListener("input", () => {
-      $("pixelZoomVal").textContent = $("pixelZoom").value + "%";
-      drawEditor();
     });
   }
 
@@ -1611,7 +1719,7 @@
         p.classList.toggle("active", show);
       });
       requestAnimationFrame(() => {
-        if (tabId === "draw") fitEditorToView();
+        if (tabId === "draw") resetEditorViewFit();
         if (tabId === "layout") updateLinePreview();
         if (tabId === "gallery") updateChart();
         if (tabId === "language") {
@@ -1634,7 +1742,7 @@
         const active = document.querySelector(".tab-panel.active");
         if (!active) return;
         const id = active.dataset.tabPanel;
-        if (id === "draw") fitEditorToView();
+        if (id === "draw") resetEditorViewFit();
       }, 120);
     });
 
@@ -1685,6 +1793,7 @@
     bootCatalogSync();
 
     setupEditor();
+    setupContextMenu();
     setupLinePreview();
     setupTools();
     setupToggles();
@@ -1693,7 +1802,6 @@
     buildCharPicker();
     buildResolutionSelect();
     buildEditorResolutionSelect();
-    $("pixelZoomVal").textContent = $("pixelZoom").value + "%";
 
     $("newBlankFontBtn").addEventListener("click", createBlankFont);
     setupAbout();

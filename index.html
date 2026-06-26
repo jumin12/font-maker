@@ -766,26 +766,24 @@
       background: var(--bg-input); color: var(--text-muted); font-size: 0.75rem; cursor: pointer;
     }
     .tool-btn.active { border-color: var(--border-focus); color: var(--accent); }
-    .tool-hint {
-      font-size: 0.62rem;
-      color: var(--text-muted);
-      margin: 0.1rem 0 0;
-      line-height: 1.35;
-    }
     .pixel-wrap {
       flex: 1; min-height: 0;
       position: relative;
       background: var(--bg-input);
       border: 1px solid var(--border); border-radius: var(--radius);
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-x pan-y;
+      overflow: hidden;
+      touch-action: none;
     }
-    .pixel-wrap.can-draw { touch-action: none; }
     .pixel-wrap.is-panning { cursor: grabbing; }
-    .pixel-wrap:not(.can-draw):not(.is-panning) { cursor: grab; }
-    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; pointer-events: auto; display: block; }
-    #pixelCanvas.draw-off { pointer-events: none; cursor: inherit; }
+    .pixel-wrap:not(.is-panning) { cursor: grab; }
+    .pixel-stage {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; display: block; touch-action: none; pointer-events: auto; }
     input[type="range"] { accent-color: var(--accent); }
     input[type="number"] {
       width: 48px; padding: 0.2rem 0.3rem; font-size: 0.75rem;
@@ -1242,22 +1240,17 @@
                 <div class="tool-row">
                   <button type="button" class="tool-btn active" data-tool="pen" aria-pressed="true">Draw</button>
                   <button type="button" class="tool-btn" data-tool="erase" aria-pressed="false">Erase</button>
-                  <button type="button" class="tool-btn" id="fitEditorBtn" title="Fit canvas in view">Fit</button>
                   <button type="button" class="tool-btn" id="clearGrid">Clear</button>
                   <button type="button" class="tool-btn" id="fillGrid">Fill</button>
                 </div>
-                <div class="tool-row">
-                  <span class="field-label" style="margin:0">Zoom</span>
-                  <input type="range" id="pixelZoom" min="40" max="400" value="100" step="5" />
-                  <span class="size-value" id="pixelZoomVal">100%</span>
-                </div>
-                <p class="hint tool-hint">Turn off Draw and Erase to pan the canvas (drag). Scroll or pinch-zoom with the slider.</p>
                 <p class="hint" id="editorHint">Editing <strong id="editCharLabel">A</strong> · linked across all styles</p>
               </div>
             </aside>
             <div class="draw-editor-col">
               <div class="pixel-wrap" id="pixelViewport">
-                <canvas id="pixelCanvas"></canvas>
+                <div class="pixel-stage" id="pixelStage">
+                  <canvas id="pixelCanvas"></canvas>
+                </div>
               </div>
             </div>
           </div>

@@ -402,11 +402,6 @@ html.mobile-mode .draw-sidebar-tools .tool-btn {
   flex: 1 1 auto;
 }
 
-html.mobile-mode .draw-sidebar-tools .tool-hint {
-  font-size: 0.55rem;
-  line-height: 1.3;
-}
-
 html.mobile-mode .draw-sidebar .hint {
   font-size: 0.55rem;
   line-height: 1.3;
@@ -423,10 +418,10 @@ html.mobile-mode .draw-editor-col {
 }
 
 html.mobile-mode .pixel-wrap {
-  touch-action: pan-x pan-y;
+  touch-action: none;
 }
 
-html.mobile-mode .pixel-wrap.can-draw {
+html.mobile-mode .pixel-stage {
   touch-action: none;
 }
 
