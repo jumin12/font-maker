@@ -8,6 +8,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="mobile.css" />
+  <script>
+    (function () {
+      function applyMobileBoot() {
+        var mobile = window.matchMedia("(max-width: 900px) and (pointer: coarse)").matches
+          || window.matchMedia("(max-width: 900px) and (hover: none)").matches
+          || window.matchMedia("(max-width: 900px) and (any-pointer: coarse)").matches;
+        document.documentElement.classList.toggle("mobile-mode", mobile);
+        document.documentElement.classList.toggle(
+          "portrait-locked",
+          mobile && window.matchMedia("(orientation: portrait)").matches
+        );
+      }
+      applyMobileBoot();
+      document.addEventListener("DOMContentLoaded", function () {
+        applyMobileBoot();
+        var rp = document.getElementById("rotatePrompt");
+        if (rp) {
+          rp.hidden = !(document.documentElement.classList.contains("mobile-mode")
+            && document.documentElement.classList.contains("portrait-locked"));
+        }
+      });
+    })();
+  </script>
   <style>
     [hidden] { display: none !important; }
     html.catalog-ready #homeLoading { display: none !important; }
@@ -428,6 +452,19 @@
       display: flex; align-items: center; gap: 0.5rem 0.75rem; flex-wrap: wrap;
       padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border);
       background: var(--bg-surface);
+    }
+    .toolbar-row-primary,
+    .toolbar-row-styles {
+      display: contents;
+    }
+    .toolbar-more {
+      display: contents;
+    }
+    .toolbar-more summary {
+      display: none;
+    }
+    .toolbar-more-panel {
+      display: contents;
     }
     .toolbar-font { font-size: 0.85rem; color: var(--text-muted); min-width: 100px; }
     .toolbar-font strong { color: var(--text); font-weight: 500; }
@@ -978,14 +1015,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    @media (max-width: 639px) and (orientation: portrait) {
-      .toolbar-font { display: none; }
-      .variant-pills { order: 3; width: 100%; justify-content: center; }
-      .toolbar-resolution { order: 4; width: 100%; justify-content: center; }
-      .toolbar-weight { order: 5; margin-left: 0; width: 100%; justify-content: center; }
-    }
-
-    /* Mobile rotate prompt — editor is landscape-only on phones/tablets */
+    /* Mobile rotate prompt — portrait gate on phones/tablets (see mobile.css) */
     .rotate-prompt {
       position: fixed;
       inset: 0;
@@ -1038,50 +1068,6 @@
       font-size: 0.82rem;
       cursor: pointer;
     }
-    .rotate-back-btn:hover { color: var(--accent); border-color: var(--border-focus); }
-
-    /* Mobile landscape — compact editor chrome */
-    @media (max-width: 900px) and (orientation: landscape) {
-      :root { --toolbar-h: 42px; --tabs-h: 38px; }
-      .draw-layout {
-        grid-template-columns: minmax(128px, 24vw) minmax(0, 1fr);
-        grid-template-rows: 1fr;
-        gap: 0.45rem;
-      }
-      .draw-sidebar { overflow: hidden; height: 100%; }
-      .char-section-row { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-      .char-btn { max-height: 38px; font-size: 0.58rem; }
-      .draw-sidebar-tools .tool-row { margin: 0.35rem 0; }
-      .toolbar { gap: 0.35rem 0.5rem; padding: 0.3rem 0.5rem; }
-      .variant-pill { padding: 0.28rem 0.5rem; font-size: 0.66rem; min-height: 28px; }
-      .toolbar-link-toggle { font-size: 0.66rem; padding: 0.25rem 0.45rem; }
-      .tab-btn { padding: 0 0.65rem; font-size: 0.74rem; }
-    }
-    @media (max-height: 380px) and (orientation: landscape) {
-      :root { --toolbar-h: 38px; --tabs-h: 34px; }
-      .char-section-row { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-      .char-btn { max-height: 30px; }
-      .char-glyph { font-size: 0.52rem; }
-    }
-    @media (min-height: 381px) and (max-height: 480px) and (orientation: landscape) and (max-width: 900px) {
-      .draw-layout { grid-template-columns: minmax(140px, 22vw) minmax(0, 1fr); }
-      .char-section-row { grid-template-columns: repeat(9, minmax(0, 1fr)); }
-    }
-    @media (min-height: 481px) and (max-width: 900px) and (orientation: landscape) {
-      .draw-layout { grid-template-columns: minmax(160px, 20vw) minmax(0, 1fr); }
-    }
-
-    /* Mobile portrait — home menu */
-    @media (max-width: 900px) and (orientation: portrait) {
-      .home-screen { padding: 1rem 0.85rem 1.5rem; }
-      .font-card-grid { grid-template-columns: 1fr; gap: 0.75rem; }
-      .home-btn { width: 100%; max-width: 320px; }
-      .home-actions-row { flex-direction: column; align-items: center; }
-    }
-    @media (min-width: 480px) and (max-width: 900px) and (orientation: portrait) {
-      .font-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
     /* Desktop scaling */
     @media (min-width: 1200px) {
       .home-content { max-width: 1200px; }
@@ -1102,9 +1088,8 @@
   <div id="rotatePrompt" class="rotate-prompt" hidden>
     <div class="rotate-prompt-card">
       <div class="rotate-icon" aria-hidden="true">📱</div>
-      <h2>Rotate your device</h2>
-      <p>The pixel editor is designed for <strong>landscape</strong> on mobile. Turn your phone sideways to draw, or return to the menu.</p>
-      <button type="button" class="rotate-back-btn" id="rotateBackBtn">← Back to menu</button>
+      <h2>Rotate to landscape</h2>
+      <p>Font Maker on mobile works in <strong>landscape</strong> only. Turn your device sideways to open the menu and editor.</p>
     </div>
   </div>
 
@@ -1151,37 +1136,46 @@
 
     <div id="main" hidden>
       <div class="toolbar">
-        <button type="button" class="toolbar-back" id="backToMenuBtn" title="Back to main menu">← Menu</button>
-        <button type="button" class="toolbar-save" id="saveFontBtn" title="Save font to this browser">Save</button>
-        <div class="toolbar-font">Editing <strong id="heroEnglish">—</strong></div>
-        <label class="toolbar-link-toggle" title="When on, glyph edits apply to all styles (Regular, Italic, Bold, Bold Italic)">
-          <input type="checkbox" id="linkVariants" checked />
-          <span>Link styles</span>
-        </label>
-        <div class="variant-pills">
-          <button type="button" class="variant-pill active" data-variant-btn="regular">Regular</button>
-          <button type="button" class="variant-pill" data-variant-btn="italic">Italic</button>
-          <button type="button" class="variant-pill" data-variant-btn="bold">Bold</button>
-          <button type="button" class="variant-pill" data-variant-btn="boldItalic">Bold Italic</button>
+        <div class="toolbar-row toolbar-row-primary">
+          <button type="button" class="toolbar-back" id="backToMenuBtn" title="Back to main menu">← Menu</button>
+          <button type="button" class="toolbar-save" id="saveFontBtn" title="Save font to this browser">Save</button>
+          <div class="toolbar-font">Editing <strong id="heroEnglish">—</strong></div>
         </div>
-        <input type="checkbox" id="toggleBold" hidden />
-        <input type="checkbox" id="toggleItalic" hidden />
-        <span class="variant-badge" id="variantBadge">Regular</span>
-        <div class="toolbar-resolution">
-          <span class="field-label" style="margin:0">Editor</span>
-          <select id="editorResolutionSelect" aria-label="Editor cell size"></select>
-          <span class="size-value" id="editorResolutionVal">6px/cell</span>
+        <div class="toolbar-row toolbar-row-styles">
+          <label class="toolbar-link-toggle" title="When on, glyph edits apply to all styles (Regular, Italic, Bold, Bold Italic)">
+            <input type="checkbox" id="linkVariants" checked />
+            <span>Link styles</span>
+          </label>
+          <div class="variant-pills">
+            <button type="button" class="variant-pill active" data-variant-btn="regular">Regular</button>
+            <button type="button" class="variant-pill" data-variant-btn="italic">Italic</button>
+            <button type="button" class="variant-pill" data-variant-btn="bold">Bold</button>
+            <button type="button" class="variant-pill" data-variant-btn="boldItalic">Bold Italic</button>
+          </div>
+          <input type="checkbox" id="toggleBold" hidden />
+          <input type="checkbox" id="toggleItalic" hidden />
+          <span class="variant-badge" id="variantBadge">Regular</span>
         </div>
-        <div class="toolbar-resolution">
-          <span class="field-label" style="margin:0">Preview</span>
-          <select id="resolutionSelect" aria-label="Preview resolution"></select>
-        </div>
-        <div class="toolbar-weight">
-          <span class="field-label" style="margin:0">Weight</span>
-          <input type="range" id="weightSlider" min="100" max="900" value="400" step="50" />
-          <input type="number" id="weightNum" min="100" max="900" step="50" value="400" aria-label="Weight value" />
-          <span class="size-value" id="weightVal">400</span>
-        </div>
+        <details class="toolbar-more">
+          <summary>Options</summary>
+          <div class="toolbar-more-panel">
+            <div class="toolbar-resolution">
+              <span class="field-label" style="margin:0">Editor</span>
+              <select id="editorResolutionSelect" aria-label="Editor cell size"></select>
+              <span class="size-value" id="editorResolutionVal">6px/cell</span>
+            </div>
+            <div class="toolbar-resolution">
+              <span class="field-label" style="margin:0">Preview</span>
+              <select id="resolutionSelect" aria-label="Preview resolution"></select>
+            </div>
+            <div class="toolbar-weight">
+              <span class="field-label" style="margin:0">Weight</span>
+              <input type="range" id="weightSlider" min="100" max="900" value="400" step="50" />
+              <input type="number" id="weightNum" min="100" max="900" step="50" value="400" aria-label="Weight value" />
+              <span class="size-value" id="weightVal">400</span>
+            </div>
+          </div>
+        </details>
       </div>
 
       <nav class="tab-bar" role="tablist">

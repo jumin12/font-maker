@@ -37,7 +37,7 @@
     $("home").hidden = true;
     $("main").hidden = false;
     document.querySelector(".app-shell").classList.add("workspace");
-    updateRotatePrompt();
+    updateMobileShell();
     requestAnimationFrame(() => {
       fitEditorToView();
     });
@@ -48,7 +48,7 @@
     $("home").hidden = false;
     $("main").hidden = true;
     document.querySelector(".app-shell").classList.remove("workspace");
-    updateRotatePrompt();
+    updateMobileShell();
     if (catalogReady) queueSavedFontsRefresh();
   }
 
@@ -174,32 +174,37 @@
     void withTimeout(refreshSavedFontsSection(), 8000, "saved fonts").catch(() => {});
   }
 
-  function isMobileEditorDevice() {
+  function isMobileDevice() {
     return window.matchMedia("(max-width: 900px) and (pointer: coarse)").matches
-      || window.matchMedia("(max-width: 900px) and (hover: none)").matches;
+      || window.matchMedia("(max-width: 900px) and (hover: none)").matches
+      || window.matchMedia("(max-width: 900px) and (any-pointer: coarse)").matches;
   }
 
   function isPortraitViewport() {
     return window.matchMedia("(orientation: portrait)").matches;
   }
 
-  function updateRotatePrompt() {
+  function updateMobileShell() {
+    const html = document.documentElement;
+    const mobile = isMobileDevice();
+    html.classList.toggle("mobile-mode", mobile);
+
+    const portraitLocked = mobile && isPortraitViewport();
+    html.classList.toggle("portrait-locked", portraitLocked);
+
     const el = $("rotatePrompt");
-    if (!el) return;
-    const inWorkspace = document.querySelector(".app-shell.workspace");
-    el.hidden = !(inWorkspace && isMobileEditorDevice() && isPortraitViewport());
+    if (el) el.hidden = !portraitLocked;
   }
 
-  function setupRotatePrompt() {
-    $("rotateBackBtn")?.addEventListener("click", showHome);
+  function setupMobileShell() {
     const onLayoutChange = () => {
-      updateRotatePrompt();
+      updateMobileShell();
       const drawPanel = document.querySelector('[data-tab-panel="draw"]');
       if (drawPanel?.classList.contains("active")) fitEditorToView();
     };
     window.addEventListener("resize", onLayoutChange);
     window.addEventListener("orientationchange", () => setTimeout(onLayoutChange, 150));
-    updateRotatePrompt();
+    updateMobileShell();
   }
 
   function openLocalDb() {
@@ -1496,7 +1501,7 @@
 
     window.addEventListener("orientationchange", () => {
       setTimeout(() => {
-        updateRotatePrompt();
+        updateMobileShell();
         fitEditorToView();
       }, 200);
     });
@@ -1537,6 +1542,7 @@
   }
 
   async function init() {
+    updateMobileShell();
     bootCatalogSync();
 
     setupEditor();
@@ -1552,7 +1558,7 @@
 
     $("newBlankFontBtn").addEventListener("click", createBlankFont);
     setupAbout();
-    setupRotatePrompt();
+    setupMobileShell();
     $("saveFontBtn").addEventListener("click", saveCurrentFont);
     $("backToMenuBtn").addEventListener("click", showHome);
     $("fontUpload").addEventListener("change", (e) => {

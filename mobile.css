@@ -1,0 +1,631 @@
+/**
+ * Font Maker — mobile-only landscape UI (html.mobile-mode).
+ * Desktop layout is unchanged when .mobile-mode is absent.
+ */
+
+html.mobile-mode {
+  --mobile-tabs-h: 50px;
+  --mobile-toolbar-h: auto;
+  --tabs-h: var(--mobile-tabs-h);
+}
+
+/* Portrait: block entire app until landscape */
+html.mobile-mode.portrait-locked .app-shell,
+html.mobile-mode.portrait-locked .loading-overlay {
+  display: none !important;
+}
+
+html.mobile-mode.portrait-locked .rotate-prompt {
+  display: flex !important;
+}
+
+/* ─── Home (landscape) ─── */
+html.mobile-mode .home-screen {
+  display: grid;
+  grid-template-columns: clamp(148px, 24vw, 200px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem 0.55rem;
+  overflow: hidden;
+}
+
+html.mobile-mode .home-hero {
+  grid-column: 1;
+  grid-row: 1;
+  flex: none;
+  margin: 0;
+  padding: 0.15rem 0 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+html.mobile-mode .home-loading,
+html.mobile-mode .home-empty,
+html.mobile-mode .home-content {
+  grid-column: 2;
+  grid-row: 1;
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.mobile-mode .home-title {
+  font-size: clamp(1.45rem, 4.5vw, 1.85rem);
+  margin-bottom: 0.2rem;
+}
+
+html.mobile-mode .home-subtitle {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+  text-align: left;
+  margin-bottom: 0.45rem;
+  font-size: 0.65rem;
+}
+
+html.mobile-mode .home-actions-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+html.mobile-mode .home-btn {
+  width: 100%;
+  min-height: 38px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.76rem;
+}
+
+html.mobile-mode .font-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.45rem;
+  padding-bottom: 0.35rem;
+}
+
+html.mobile-mode .font-card {
+  min-height: 96px;
+  padding: 0.65rem 0.45rem;
+  gap: 0.35rem;
+}
+
+html.mobile-mode .font-card-preview {
+  font-size: 1.35rem;
+}
+
+html.mobile-mode .home-footer-row {
+  padding: 0.35rem 0 0;
+  justify-content: flex-start;
+}
+
+html.mobile-mode .home-btn-about {
+  width: 100%;
+  max-width: none;
+}
+
+/* ─── Workspace shell ─── */
+html.mobile-mode.workspace #main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: calc(var(--mobile-tabs-h) + var(--safe-bottom));
+}
+
+html.mobile-mode .toolbar {
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+  padding: 0.3rem 0.45rem;
+  min-height: 0;
+}
+
+html.mobile-mode .toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+html.mobile-mode .toolbar-row-primary {
+  flex-wrap: nowrap;
+}
+
+html.mobile-mode .toolbar-row-primary .toolbar-font {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.mobile-mode .toolbar-row-primary .toolbar-font strong {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+html.mobile-mode .toolbar-row-styles {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.05rem;
+}
+
+html.mobile-mode .variant-pills {
+  flex-shrink: 0;
+}
+
+html.mobile-mode .variant-pill {
+  padding: 0.26rem 0.48rem;
+  font-size: 0.64rem;
+  min-height: 28px;
+}
+
+html.mobile-mode .toolbar-link-toggle {
+  font-size: 0.64rem;
+  padding: 0.22rem 0.42rem;
+  flex-shrink: 0;
+}
+
+html.mobile-mode .toolbar-back,
+html.mobile-mode .toolbar-save {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.72rem;
+  min-height: 30px;
+}
+
+html.mobile-mode .variant-badge {
+  display: none;
+}
+
+/* Collapsible advanced toolbar on mobile */
+html.mobile-mode .toolbar-more {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+html.mobile-mode .toolbar-more summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+html.mobile-mode .toolbar-more summary::-webkit-details-marker {
+  display: none;
+}
+
+html.mobile-mode .toolbar-more summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+html.mobile-mode .toolbar-more[open] summary::before {
+  content: "▾ ";
+}
+
+html.mobile-mode .toolbar-more-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem 0.45rem;
+  border-top: 1px solid var(--border);
+}
+
+html.mobile-mode .toolbar-resolution {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html.mobile-mode .toolbar-resolution select {
+  max-width: 88px;
+  font-size: 0.72rem;
+  min-height: 28px;
+  padding: 0.2rem 0.35rem;
+}
+
+html.mobile-mode .toolbar-weight {
+  flex: 1 1 100%;
+  margin-left: 0;
+}
+
+html.mobile-mode .toolbar-weight input[type="range"] {
+  flex: 1;
+  min-width: 60px;
+}
+
+/* Bottom tab navigation */
+html.mobile-mode .tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  min-height: var(--mobile-tabs-h);
+  padding: 0 0.15rem var(--safe-bottom);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+  justify-content: space-around;
+}
+
+html.mobile-mode .tab-btn {
+  flex: 1;
+  padding: 0.2rem 0.15rem;
+  min-height: var(--mobile-tabs-h);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  line-height: 1.1;
+  border-bottom: none;
+  margin-bottom: 0;
+  border-top: 2px solid transparent;
+}
+
+html.mobile-mode .tab-btn.active {
+  border-top-color: var(--accent);
+  border-bottom-color: transparent;
+  background: var(--accent-soft);
+}
+
+html.mobile-mode .tab-btn::before {
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+html.mobile-mode .tab-btn[data-tab="draw"]::before { content: "✏"; }
+html.mobile-mode .tab-btn[data-tab="preview"]::before { content: "👁"; }
+html.mobile-mode .tab-btn[data-tab="layout"]::before { content: "📐"; }
+html.mobile-mode .tab-btn[data-tab="gallery"]::before { content: "▦"; }
+html.mobile-mode .tab-btn[data-tab="language"]::before { content: "文"; }
+html.mobile-mode .tab-btn[data-tab="guide"]::before { content: "?"; }
+html.mobile-mode .tab-btn[data-tab="export"]::before { content: "↓"; }
+
+html.mobile-mode .tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.mobile-mode .tab-panel {
+  padding: 0.35rem 0.45rem;
+}
+
+html.mobile-mode .tab-panel.scroll-panel.active {
+  padding: 0.35rem 0.45rem 0.5rem;
+}
+
+/* ─── Draw ─── */
+html.mobile-mode .draw-layout {
+  grid-template-columns: minmax(108px, 22vw) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  gap: 0.35rem;
+  height: 100%;
+}
+
+html.mobile-mode .draw-sidebar {
+  overflow: hidden;
+  height: 100%;
+}
+
+html.mobile-mode .char-section-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.18rem;
+}
+
+html.mobile-mode .char-btn {
+  max-height: 34px;
+  font-size: 0.52rem;
+  padding: 0.06rem;
+}
+
+html.mobile-mode .char-glyph {
+  font-size: 0.5rem;
+}
+
+html.mobile-mode .char-mini {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+html.mobile-mode .draw-sidebar-tools .tool-row {
+  margin: 0.2rem 0;
+  gap: 0.25rem;
+}
+
+html.mobile-mode .draw-sidebar-tools .tool-btn {
+  padding: 0.28rem 0.4rem;
+  min-height: 30px;
+  font-size: 0.65rem;
+  flex: 1;
+}
+
+html.mobile-mode .draw-sidebar .hint {
+  font-size: 0.58rem;
+  line-height: 1.35;
+}
+
+html.mobile-mode .field-label {
+  font-size: 0.58rem;
+  margin-bottom: 0.15rem;
+}
+
+/* Short landscape phones */
+@media (max-height: 380px) {
+  html.mobile-mode .char-section-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  html.mobile-mode .char-btn { max-height: 28px; }
+  html.mobile-mode .home-title { font-size: 1.25rem; }
+  html.mobile-mode .toolbar-more summary { padding: 0.25rem 0.45rem; }
+}
+
+/* Taller phones / small tablets landscape */
+@media (min-height: 381px) and (max-height: 500px) {
+  html.mobile-mode .draw-layout {
+    grid-template-columns: minmax(120px, 20vw) minmax(0, 1fr);
+  }
+  html.mobile-mode .char-section-row {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-height: 501px) {
+  html.mobile-mode .draw-layout {
+    grid-template-columns: minmax(132px, 18vw) minmax(0, 1fr);
+  }
+  html.mobile-mode .char-section-row {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+/* ─── Preview ─── */
+html.mobile-mode .preview-panel.active {
+  gap: 0.35rem;
+}
+
+html.mobile-mode .preview-fixed {
+  max-height: 42vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.mobile-mode .hero-box {
+  padding: 0.45rem;
+}
+
+html.mobile-mode #heroCanvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+html.mobile-mode .type-area {
+  min-height: 48px;
+  max-height: 72px;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.55rem;
+}
+
+html.mobile-mode .controls {
+  margin: 0.35rem 0;
+  gap: 0.4rem;
+}
+
+html.mobile-mode .chip {
+  font-size: 0.6rem;
+  padding: 0.2rem 0.4rem;
+}
+
+html.mobile-mode .preview-panel .preview-scroll-box {
+  min-height: 80px;
+  flex: 1;
+}
+
+/* ─── Layout ─── */
+html.mobile-mode .layout-panel.active {
+  overflow: hidden;
+}
+
+html.mobile-mode .layout-shell {
+  flex-direction: row;
+  gap: 0.4rem;
+  height: 100%;
+}
+
+html.mobile-mode .layout-preview-col {
+  flex: 1.35;
+  min-width: 0;
+  max-height: none;
+}
+
+html.mobile-mode .layout-controls-col {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.mobile-mode .layout-type-area {
+  min-height: 44px;
+  max-height: 64px;
+  font-size: 0.78rem;
+}
+
+html.mobile-mode .line-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+html.mobile-mode .metrics-header {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+html.mobile-mode .nudge-pad {
+  grid-template-columns: repeat(3, 30px);
+}
+
+html.mobile-mode .nudge-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+}
+
+html.mobile-mode .layout-grid {
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+}
+
+/* ─── Gallery ─── */
+html.mobile-mode .glyph-grid {
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 0.3rem;
+}
+
+html.mobile-mode .glyph-cell {
+  padding: 0.25rem;
+}
+
+html.mobile-mode .glyph-mini {
+  width: 52px !important;
+  height: 46px !important;
+}
+
+html.mobile-mode .glyph-label {
+  font-size: 0.62rem;
+  margin-top: 0.12rem;
+}
+
+html.mobile-mode .chart-block h3 {
+  margin: 0.5rem 0 0.3rem;
+  font-size: 0.58rem;
+}
+
+/* ─── Language ─── */
+html.mobile-mode .language-layout {
+  grid-template-columns: minmax(100px, 28vw) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  height: 100%;
+}
+
+html.mobile-mode .language-list {
+  max-height: none;
+}
+
+html.mobile-mode .lang-item {
+  padding: 0.4rem 0.45rem;
+}
+
+html.mobile-mode .lang-item-name {
+  font-size: 0.76rem;
+}
+
+html.mobile-mode .language-editor-col {
+  gap: 0.45rem;
+}
+
+html.mobile-mode .lang-panel {
+  padding: 0.5rem;
+}
+
+html.mobile-mode .lang-panel h4 {
+  font-size: 0.62rem;
+  margin-bottom: 0.35rem;
+}
+
+html.mobile-mode .lang-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+html.mobile-mode .lang-textarea {
+  min-height: 52px;
+  font-size: 0.75rem;
+}
+
+html.mobile-mode .lang-table {
+  font-size: 0.68rem;
+}
+
+html.mobile-mode .lang-preview-box .preview-scroll-box {
+  max-height: 28vh;
+}
+
+/* ─── Guide & Export ─── */
+html.mobile-mode .guide-panel {
+  padding: 0.2rem 0.15rem 0.5rem;
+}
+
+html.mobile-mode .guide-section {
+  padding: 0.6rem 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+html.mobile-mode .guide-section h3 {
+  font-size: 0.82rem;
+}
+
+html.mobile-mode .guide-section p,
+html.mobile-mode .guide-section li {
+  font-size: 0.72rem;
+}
+
+html.mobile-mode .export-panel {
+  padding: 1rem 0.5rem;
+}
+
+html.mobile-mode .export-btn {
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ─── Overlays ─── */
+html.mobile-mode .about-dialog {
+  width: min(100%, 340px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+html.mobile-mode .pixel-wrap {
+  touch-action: none;
+}
+
+html.mobile-mode #pixelCanvas {
+  touch-action: none;
+}
+
+html.mobile-mode .about-overlay {
+  z-index: 380;
+  padding: 0.75rem;
+}
+
+html.mobile-mode .loading-overlay {
+  z-index: 400;
+}
