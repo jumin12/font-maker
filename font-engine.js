@@ -693,9 +693,12 @@ const FontEngine = (() => {
   }
 
   async function fetchFontBuffer(url) {
-    const res = await fetch(url);
+    const resolved = (url.startsWith("http:") || url.startsWith("https:") || url.startsWith("blob:"))
+      ? url
+      : new URL(url, typeof document !== "undefined" ? document.baseURI : location.href).href;
+    const res = await fetch(resolved);
     if (!res.ok) {
-      throw new Error(`Could not load font file (${res.status}): ${url}`);
+      throw new Error(`Could not load font file (${res.status}): ${resolved}`);
     }
     return res.arrayBuffer();
   }

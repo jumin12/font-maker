@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: font-maker
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /manifest.json
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=86400

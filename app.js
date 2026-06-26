@@ -18,6 +18,8 @@
 
   const LOCAL_DB_NAME = "fontMaker";
   const LOCAL_STORE = "savedFonts";
+  const IDB_TIMEOUT_MS = 4000;
+  const FETCH_TIMEOUT_MS = 12000;
 
   const SAMPLES = [
     "The Quick Brown Fox",
@@ -33,6 +35,7 @@
     $("home").hidden = true;
     $("main").hidden = false;
     document.querySelector(".app-shell").classList.add("workspace");
+    updateRotatePrompt();
     requestAnimationFrame(() => {
       fitEditorToView();
     });
@@ -43,30 +46,130 @@
     $("home").hidden = false;
     $("main").hidden = true;
     document.querySelector(".app-shell").classList.remove("workspace");
+    updateRotatePrompt();
     refreshSavedFontsSection();
   }
 
+  function resolveAssetUrl(path) {
+    if (!path) return path;
+    if (path.startsWith("http:") || path.startsWith("https:") || path.startsWith("blob:")) return path;
+    return new URL(path, document.baseURI).href;
+  }
+
+  async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await fetch(url, { signal: ctrl.signal, cache: "no-cache" });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function readEmbeddedManifest() {
+    const el = document.getElementById("embeddedManifest");
+    if (!el?.textContent?.trim()) return null;
+    try {
+      return JSON.parse(el.textContent);
+    } catch {
+      return null;
+    }
+  }
+
+  async function loadFontCatalog() {
+    const embedded = readEmbeddedManifest();
+    if (embedded) return embedded;
+
+    const candidates = [
+      resolveAssetUrl("manifest.json"),
+      new URL("manifest.json", location.href).href,
+    ];
+    for (const url of [...new Set(candidates)]) {
+      try {
+        const res = await fetchWithTimeout(url);
+        if (res.ok) return await res.json();
+      } catch {
+        /* try next */
+      }
+    }
+    throw new Error("Font catalog unavailable");
+  }
+
+  function isMobileEditorDevice() {
+    return window.matchMedia("(max-width: 900px) and (pointer: coarse)").matches
+      || window.matchMedia("(max-width: 900px) and (hover: none)").matches;
+  }
+
+  function isPortraitViewport() {
+    return window.matchMedia("(orientation: portrait)").matches;
+  }
+
+  function updateRotatePrompt() {
+    const el = $("rotatePrompt");
+    if (!el) return;
+    const inWorkspace = document.querySelector(".app-shell.workspace");
+    el.hidden = !(inWorkspace && isMobileEditorDevice() && isPortraitViewport());
+  }
+
+  function setupRotatePrompt() {
+    $("rotateBackBtn")?.addEventListener("click", showHome);
+    const onLayoutChange = () => {
+      updateRotatePrompt();
+      const drawPanel = document.querySelector('[data-tab-panel="draw"]');
+      if (drawPanel?.classList.contains("active")) fitEditorToView();
+    };
+    window.addEventListener("resize", onLayoutChange);
+    window.addEventListener("orientationchange", () => setTimeout(onLayoutChange, 150));
+    updateRotatePrompt();
+  }
+
+  function showHomeCatalog() {
+    $("homeLoading").hidden = true;
+    $("homeEmpty").hidden = true;
+    $("homeContent").hidden = false;
+  }
+
+  function showHomeCatalogError(message) {
+    $("homeLoading").innerHTML = `<p style="color:#e88">${message}</p>
+      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-muted)">
+        Check your connection or try refreshing the page.</p>`;
+  }
+
   function openLocalDb() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(LOCAL_DB_NAME, 1);
-      req.onupgradeneeded = () => {
-        req.result.createObjectStore(LOCAL_STORE, { keyPath: "id" });
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    return Promise.race([
+      new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+          reject(new Error("IndexedDB unavailable"));
+          return;
+        }
+        const req = indexedDB.open(LOCAL_DB_NAME, 1);
+        req.onupgradeneeded = () => {
+          req.result.createObjectStore(LOCAL_STORE, { keyPath: "id" });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error("IndexedDB blocked"));
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("IndexedDB timeout")), IDB_TIMEOUT_MS);
+      }),
+    ]);
   }
 
   async function listSavedFonts() {
-    const db = await openLocalDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(LOCAL_STORE, "readonly");
-      const req = tx.objectStore(LOCAL_STORE).getAll();
-      req.onsuccess = () => {
-        resolve((req.result || []).sort((a, b) => b.savedAt - a.savedAt));
-      };
-      req.onerror = () => reject(req.error);
-    });
+    try {
+      const db = await openLocalDb();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_STORE, "readonly");
+        const req = tx.objectStore(LOCAL_STORE).getAll();
+        req.onsuccess = () => {
+          resolve((req.result || []).sort((a, b) => b.savedAt - a.savedAt));
+        };
+        req.onerror = () => reject(req.error);
+      });
+    } catch {
+      return [];
+    }
   }
 
   async function putSavedFont(entry) {
@@ -959,7 +1062,7 @@
       const regular = fam.variants?.regular;
       if (!regular?.path) continue;
       try {
-        const res = await fetch(regular.path);
+        const res = await fetchWithTimeout(resolveAssetUrl(regular.path));
         if (!res.ok) continue;
         const buffer = await res.arrayBuffer();
         const blob = new Blob([buffer], { type: "font/ttf" });
@@ -1023,8 +1126,9 @@
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const px = (e.clientX - rect.left) * scaleX;
-    const py = (e.clientY - rect.top) * scaleY;
+    const pt = e.touches?.[0] ?? e.changedTouches?.[0] ?? e;
+    const px = (pt.clientX - rect.left) * scaleX;
+    const py = (pt.clientY - rect.top) * scaleY;
     const cell = fontData ? FontEngine.getEditorCellPx(fontData) : FontEngine.EDITOR_CELL_PX;
     if (!fontData) {
       const pad = FontEngine.editorCanvasMargins(null, currentVariant(), cell);
@@ -1124,37 +1228,33 @@
       }).observe(wrap);
     }
 
-    canvas.addEventListener("mousedown", (e) => {
+    const onPointerDown = (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
+      canvas.setPointerCapture(e.pointerId);
       isDrawing = true;
       const cell = canvasCellFromEvent(e);
       if (cell) paintAt(cell.x, cell.y);
-    });
+    };
 
-    canvas.addEventListener("mousemove", (e) => {
+    const onPointerMove = (e) => {
       if (!isDrawing) return;
       const cell = canvasCellFromEvent(e);
       if (cell) paintAt(cell.x, cell.y);
-    });
+    };
 
-    document.addEventListener("mouseup", () => { isDrawing = false; });
+    const endStroke = (e) => {
+      if (canvas.hasPointerCapture?.(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+      isDrawing = false;
+    };
 
-    canvas.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      isDrawing = true;
-      const t = e.touches[0];
-      const cell = canvasCellFromEvent(t);
-      if (cell) paintAt(cell.x, cell.y);
-    }, { passive: false });
-
-    canvas.addEventListener("touchmove", (e) => {
-      e.preventDefault();
-      if (!isDrawing) return;
-      const t = e.touches[0];
-      const cell = canvasCellFromEvent(t);
-      if (cell) paintAt(cell.x, cell.y);
-    }, { passive: false });
-
-    document.addEventListener("touchend", () => { isDrawing = false; });
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endStroke);
+    canvas.addEventListener("pointercancel", endStroke);
+    canvas.addEventListener("lostpointercapture", () => { isDrawing = false; });
   }
 
   function setupLinePreview() {
@@ -1312,6 +1412,7 @@
 
     window.addEventListener("orientationchange", () => {
       setTimeout(() => {
+        updateRotatePrompt();
         fitEditorToView();
       }, 200);
     });
@@ -1365,6 +1466,7 @@
 
     $("newBlankFontBtn").addEventListener("click", createBlankFont);
     setupAbout();
+    setupRotatePrompt();
     $("saveFontBtn").addEventListener("click", saveCurrentFont);
     $("backToMenuBtn").addEventListener("click", showHome);
     $("fontUpload").addEventListener("change", (e) => {
@@ -1442,9 +1544,7 @@
     });
 
     try {
-      const res = await fetch("manifest.json");
-      if (!res.ok) throw new Error("manifest.json missing");
-      const data = await res.json();
+      const data = await loadFontCatalog();
       const catalog = data.families || [];
       families = [
         {
@@ -1463,14 +1563,11 @@
         return;
       }
       buildFontGallery();
-      await refreshSavedFontsSection();
-      $("homeLoading").hidden = true;
-      $("homeEmpty").hidden = true;
-      $("homeContent").hidden = false;
+      showHomeCatalog();
+      refreshSavedFontsSection();
     } catch (err) {
-      $("homeLoading").innerHTML = `<p style="color:#e88">Could not load fonts.</p>
-        <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-muted)">
-          Run <code style="color:var(--warm)">python serve.py</code></p>`;
+      console.error("Font catalog load failed:", err);
+      showHomeCatalogError("Could not load fonts.");
     }
   }
 

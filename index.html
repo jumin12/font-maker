@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <base href="/" />
   <title>Font Maker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -703,7 +704,7 @@
       overflow: auto;
       touch-action: none;
     }
-    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; }
+    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; pointer-events: auto; }
     input[type="range"] { accent-color: var(--accent); }
     input[type="number"] {
       width: 48px; padding: 0.2rem 0.3rem; font-size: 0.75rem;
@@ -982,10 +983,129 @@
       .toolbar-resolution { order: 4; width: 100%; justify-content: center; }
       .toolbar-weight { order: 5; margin-left: 0; width: 100%; justify-content: center; }
     }
+
+    /* Mobile rotate prompt — editor is landscape-only on phones/tablets */
+    .rotate-prompt {
+      position: fixed;
+      inset: 0;
+      z-index: 350;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(1.25rem, var(--safe-top)) max(1.25rem, var(--safe-right)) max(1.25rem, var(--safe-bottom)) max(1.25rem, var(--safe-left));
+      background: rgba(6, 8, 12, 0.94);
+      backdrop-filter: blur(10px);
+    }
+    .rotate-prompt-card {
+      text-align: center;
+      max-width: min(100%, 340px);
+      padding: 1.5rem 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .rotate-prompt-card h2 {
+      font-size: 1.15rem;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+    .rotate-prompt-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.1rem;
+    }
+    .rotate-icon {
+      font-size: 3.25rem;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.85rem;
+      display: inline-block;
+      animation: rotate-hint 2.2s ease-in-out infinite;
+    }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(-90deg); }
+      50% { transform: rotate(0deg); }
+    }
+    .rotate-back-btn {
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .rotate-back-btn:hover { color: var(--accent); border-color: var(--border-focus); }
+
+    /* Mobile landscape — compact editor chrome */
+    @media (max-width: 900px) and (orientation: landscape) {
+      :root { --toolbar-h: 42px; --tabs-h: 38px; }
+      .draw-layout {
+        grid-template-columns: minmax(128px, 24vw) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+        gap: 0.45rem;
+      }
+      .draw-sidebar { overflow: hidden; height: 100%; }
+      .char-section-row { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+      .char-btn { max-height: 38px; font-size: 0.58rem; }
+      .draw-sidebar-tools .tool-row { margin: 0.35rem 0; }
+      .toolbar { gap: 0.35rem 0.5rem; padding: 0.3rem 0.5rem; }
+      .variant-pill { padding: 0.28rem 0.5rem; font-size: 0.66rem; min-height: 28px; }
+      .toolbar-link-toggle { font-size: 0.66rem; padding: 0.25rem 0.45rem; }
+      .tab-btn { padding: 0 0.65rem; font-size: 0.74rem; }
+    }
+    @media (max-height: 380px) and (orientation: landscape) {
+      :root { --toolbar-h: 38px; --tabs-h: 34px; }
+      .char-section-row { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+      .char-btn { max-height: 30px; }
+      .char-glyph { font-size: 0.52rem; }
+    }
+    @media (min-height: 381px) and (max-height: 480px) and (orientation: landscape) and (max-width: 900px) {
+      .draw-layout { grid-template-columns: minmax(140px, 22vw) minmax(0, 1fr); }
+      .char-section-row { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+    }
+    @media (min-height: 481px) and (max-width: 900px) and (orientation: landscape) {
+      .draw-layout { grid-template-columns: minmax(160px, 20vw) minmax(0, 1fr); }
+    }
+
+    /* Mobile portrait — home menu */
+    @media (max-width: 900px) and (orientation: portrait) {
+      .home-screen { padding: 1rem 0.85rem 1.5rem; }
+      .font-card-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+      .home-btn { width: 100%; max-width: 320px; }
+      .home-actions-row { flex-direction: column; align-items: center; }
+    }
+    @media (min-width: 480px) and (max-width: 900px) and (orientation: portrait) {
+      .font-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* Desktop scaling */
+    @media (min-width: 1200px) {
+      .home-content { max-width: 1200px; }
+      .draw-layout { grid-template-columns: minmax(210px, 17vw) minmax(0, 1fr); }
+    }
+    @media (min-width: 1600px) {
+      .draw-layout { grid-template-columns: minmax(250px, 15vw) minmax(0, 1fr); }
+      .home-content { max-width: 1280px; }
+    }
+    @media (min-width: 900px) and (max-width: 1199px) {
+      .draw-layout { grid-template-columns: minmax(200px, 19vw) minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>
   <div class="backdrop"></div>
+
+  <div id="rotatePrompt" class="rotate-prompt" hidden>
+    <div class="rotate-prompt-card">
+      <div class="rotate-icon" aria-hidden="true">📱</div>
+      <h2>Rotate your device</h2>
+      <p>The pixel editor is designed for <strong>landscape</strong> on mobile. Turn your phone sideways to draw, or return to the menu.</p>
+      <button type="button" class="rotate-back-btn" id="rotateBackBtn">← Back to menu</button>
+    </div>
+  </div>
 
   <div class="app-shell">
     <div id="home" class="home-screen">
@@ -1459,6 +1579,21 @@
     <p id="loadingText">Loading…</p>
   </div>
 
+  <script type="application/json" id="embeddedManifest">{
+  "families": [
+    {
+      "id": "eldaraure",
+      "name": "Eldaraure",
+      "displayName": "Eldaraure",
+      "variants": {
+        "bold": { "path": "fonts/Eldaraure-Bold.ttf", "style": "Bold", "weight": 700, "italic": false, "format": "truetype" },
+        "boldItalic": { "path": "fonts/Eldaraure-BoldItalic.ttf", "style": "Bold Italic", "weight": 700, "italic": true, "format": "truetype" },
+        "italic": { "path": "fonts/Eldaraure-Italic.ttf", "style": "Italic", "weight": 400, "italic": true, "format": "truetype" },
+        "regular": { "path": "fonts/Eldaraure-Regular.ttf", "style": "Regular", "weight": 400, "italic": false, "format": "truetype" }
+      }
+    }
+  ]
+}</script>
   <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="font-engine.js"></script>
