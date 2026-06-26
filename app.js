@@ -9,9 +9,9 @@
   let currentFamilyId = null;
   let selectedChar = "A";
   let editorGrid = FontEngine.createEmptyGrid();
-  let drawEnabled = true;
+  let drawEnabled = false;
   let eraseEnabled = false;
-  let toolOrder = ["pen"];
+  let toolOrder = [];
   let isDrawing = false;
   let drawStrokeTool = null;
   let isPanning = false;
@@ -1476,6 +1476,22 @@
 
     const onPointerDown = (e) => {
       if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
+
+      if (e.pointerType === "mouse" && e.button === 1) {
+        e.preventDefault();
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        isPanning = true;
+        panStart = {
+          x: e.clientX,
+          y: e.clientY,
+          panX: editorView.panX,
+          panY: editorView.panY,
+        };
+        viewport.setPointerCapture(e.pointerId);
+        updateEditorCursor();
+        return;
+      }
+
       if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 2) return;
 
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1588,6 +1604,10 @@
       const factor = e.deltaY > 0 ? 0.92 : 1.08;
       zoomEditorAt(e.clientX, e.clientY, factor);
     }, { passive: false });
+
+    viewport.addEventListener("auxclick", (e) => {
+      if (e.button === 1) e.preventDefault();
+    });
 
     updateEditorCursor();
   }
@@ -1796,6 +1816,7 @@
     setupContextMenu();
     setupLinePreview();
     setupTools();
+    syncToolToggleUI();
     setupToggles();
     setupTabs();
     setupLanguage();

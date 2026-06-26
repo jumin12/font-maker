@@ -323,12 +323,18 @@ html.mobile-mode .tab-panel.active {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--mobile-tabs-h) + var(--safe-bottom) + 0.75rem);
+}
+
+html.mobile-mode .tab-panel[data-tab-panel="draw"].active {
+  overflow: hidden;
+  padding-bottom: 0;
 }
 
 html.mobile-mode .tab-panel.scroll-panel.active {
   display: block;
   overflow-y: auto;
-  padding: 0.4rem 0.5rem 0.75rem;
+  padding: 0.4rem 0.5rem calc(var(--mobile-tabs-h) + var(--safe-bottom) + 1rem);
 }
 
 /* ─── Draw ─── */
@@ -349,7 +355,19 @@ html.mobile-mode .draw-sidebar {
   gap: 0.25rem;
 }
 
+html.mobile-mode .draw-sidebar-tools {
+  order: -2;
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+html.mobile-mode .draw-sidebar > .field-label {
+  order: -1;
+  flex-shrink: 0;
+}
+
 html.mobile-mode .char-picker {
+  order: 0;
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
@@ -383,11 +401,6 @@ html.mobile-mode .char-mega-slot {
 
 html.mobile-mode .char-mega-label {
   font-size: 0.78rem;
-}
-
-html.mobile-mode .draw-sidebar-tools {
-  flex-shrink: 0;
-  margin-top: 0;
 }
 
 html.mobile-mode .draw-sidebar-tools .tool-row {
@@ -456,6 +469,7 @@ html.mobile-mode .pixel-stage {
 /* ─── Preview ─── */
 html.mobile-mode .preview-panel.active {
   gap: 0.45rem;
+  padding-bottom: calc(var(--mobile-tabs-h) + var(--safe-bottom) + 1rem);
 }
 
 html.mobile-mode .preview-fixed {
@@ -495,12 +509,12 @@ html.mobile-mode .preview-panel .preview-scroll-box {
   min-height: 120px;
   max-height: none;
   overflow: auto;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
-/* ─── Layout ─── */
 html.mobile-mode .layout-panel.active {
   overflow-y: auto;
+  padding-bottom: calc(var(--mobile-tabs-h) + var(--safe-bottom) + 1rem);
 }
 
 html.mobile-mode .layout-shell {
@@ -588,8 +602,10 @@ html.mobile-mode .chart-block h3 {
   font-size: 0.58rem;
 }
 
-html.mobile-mode .gallery-panel.scroll-panel.active {
-  padding-bottom: 1rem;
+html.mobile-mode .gallery-panel.scroll-panel.active,
+html.mobile-mode .tab-panel[data-tab-panel="language"].active,
+html.mobile-mode .tab-panel[data-tab-panel="export"].active {
+  padding-bottom: calc(var(--mobile-tabs-h) + var(--safe-bottom) + 1rem);
 }
 
 /* ─── Language ─── */
