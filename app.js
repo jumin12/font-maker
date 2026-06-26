@@ -11,6 +11,8 @@
   let editorGrid = FontEngine.createEmptyGrid();
   let tool = "pen";
   let isDrawing = false;
+  let isPanning = false;
+  let panStart = null;
   let lineHitRegions = [];
   let lineDrag = null;
   let lineDragMoved = false;
@@ -200,7 +202,7 @@
     const onLayoutChange = () => {
       updateMobileShell();
       const drawPanel = document.querySelector('[data-tab-panel="draw"]');
-      if (drawPanel?.classList.contains("active")) fitEditorToView();
+      if (drawPanel?.classList.contains("active")) paintCharMegaPreview();
     };
     window.addEventListener("resize", onLayoutChange);
     window.addEventListener("orientationchange", () => setTimeout(onLayoutChange, 150));
@@ -437,20 +439,46 @@
     initWorkspaceFromFont({ displayName: name, name });
   }
 
+  function isDrawToolActive() {
+    return tool === "pen" || tool === "erase";
+  }
+
+  function updateEditorCursor() {
+    const viewport = $("pixelViewport");
+    const canvas = $("pixelCanvas");
+    if (!viewport || !canvas) return;
+    const drawing = isDrawToolActive();
+    viewport.classList.toggle("can-draw", drawing);
+    viewport.classList.toggle("is-panning", isPanning);
+    canvas.classList.toggle("draw-off", !drawing);
+    canvas.style.cursor = drawing ? (tool === "pen" ? "crosshair" : "cell") : "inherit";
+  }
+
+  function centerEditorInView() {
+    const viewport = $("pixelViewport");
+    const canvas = $("pixelCanvas");
+    if (!viewport || !canvas) return;
+    requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(0, (canvas.offsetWidth - viewport.clientWidth) / 2);
+      viewport.scrollTop = Math.max(0, (canvas.offsetHeight - viewport.clientHeight) / 2);
+    });
+  }
+
   function fitEditorToView() {
-    const wrap = document.querySelector(".pixel-wrap");
-    if (!wrap || wrap.clientWidth < 40 || wrap.clientHeight < 40) return;
+    const viewport = $("pixelViewport");
+    if (!viewport || viewport.clientWidth < 40 || viewport.clientHeight < 40) return;
     const cell = fontData ? FontEngine.getEditorCellPx(fontData) : FontEngine.EDITOR_CELL_PX;
     const variant = currentVariant();
     const { width, height } = FontEngine.editorCanvasPixelSize(fontData, variant, cell);
     const scale = Math.min(
-      (wrap.clientWidth - 4) / width,
-      (wrap.clientHeight - 4) / height
-    ) * 0.995;
+      (viewport.clientWidth - 8) / width,
+      (viewport.clientHeight - 8) / height
+    ) * 0.98;
     const pct = Math.round(Math.max(40, Math.min(400, scale * 100)));
     $("pixelZoom").value = pct;
     $("pixelZoomVal").textContent = pct + "%";
     drawEditor();
+    centerEditorInView();
   }
 
   function syncVariantUI() {
@@ -522,6 +550,8 @@
       fontData,
       cellSize: fontData ? FontEngine.getEditorCellPx(fontData) : FontEngine.EDITOR_CELL_PX,
     });
+    paintCharMegaPreview();
+    updateEditorCursor();
   }
 
   function syncWeightUI() {
@@ -764,6 +794,11 @@
       renderSection("Lowercase", FontEngine.LETTERS_LOWER),
       renderSection("Numbers", FontEngine.DIGITS),
       renderSection("Special", FontEngine.SPECIAL_CHARS),
+      `<div class="char-mega-preview" id="charMegaPreview">
+        <span class="char-mega-title">Selected preview</span>
+        <div class="char-mega-slot"><canvas id="charMegaCanvas" aria-hidden="true"></canvas></div>
+        <span class="char-mega-label" id="charMegaLabel">A</span>
+      </div>`,
     ].join("");
 
     wrap.querySelectorAll(".char-btn").forEach((btn) => {
@@ -772,31 +807,72 @@
     paintCharPickerGlyphs();
   }
 
+  function paintCharMegaPreview() {
+    const wrap = $("charMegaPreview");
+    const canvas = $("charMegaCanvas");
+    const label = $("charMegaLabel");
+    if (!wrap || !canvas || !label || !fontData) return;
+    const ch = selectedChar;
+    const numLabel = ch >= "0" && ch <= "9" ? FontEngine.NUMBER_LABELS[Number(ch)] : null;
+    label.textContent = numLabel || ch;
+    const grid = fontData.variants[editorSourceVariant()][ch];
+    const previewVariant = currentVariant();
+    const slot = wrap.querySelector(".char-mega-slot");
+    const slotW = Math.max(80, slot?.clientWidth || 120);
+    const renderH = Math.max(56, Math.min(140, slotW * 0.85));
+    const gridData = grid && FontEngine.gridHasInk(grid) ? grid : null;
+    if (!gridData) {
+      canvas.width = Math.round(slotW);
+      canvas.height = Math.round(renderH);
+      canvas.style.width = `${canvas.width}px`;
+      canvas.style.height = `${canvas.height}px`;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    FontEngine.renderGlyphToCanvas(gridData, canvas, renderH, "#a8c4ff", 2, fontData, ch, previewVariant);
+    const maxW = slotW - 4;
+    const maxH = renderH * 1.15;
+    const scale = Math.min(maxW / canvas.width, maxH / canvas.height, 1.25);
+    canvas.style.width = `${Math.max(1, Math.round(canvas.width * scale))}px`;
+    canvas.style.height = `${Math.max(1, Math.round(canvas.height * scale))}px`;
+  }
+
   function paintCharPickerGlyphs() {
     if (!fontData) return;
     const dataVariant = editorSourceVariant();
     const previewVariant = currentVariant();
-    const boxW = 30;
-    const boxH = 30;
+    const renderH = 38;
+    const maxDisplay = 32;
+    const labelPx = 11;
+    const pad = 10;
+
     document.querySelectorAll(".char-btn").forEach((btn) => {
       const ch = btn.dataset.ch;
       const mini = btn.querySelector(".char-mini");
       const slot = btn.querySelector(".char-mini-slot");
       if (!mini || !ch) return;
       const grid = fontData.variants[dataVariant][ch];
-      if (!grid || !FontEngine.gridHasInk(grid)) {
-        if (slot) slot.style.visibility = "hidden";
-        return;
+      let previewH = 0;
+      if (grid && FontEngine.gridHasInk(grid)) {
+        if (slot) slot.style.visibility = "visible";
+        FontEngine.renderGlyphToCanvas(grid, mini, renderH, "#a8c4ff", 0, fontData, ch, previewVariant);
+        const scale = Math.min(maxDisplay / mini.width, maxDisplay / mini.height, 1);
+        const dw = Math.max(1, Math.round(mini.width * scale));
+        const dh = Math.max(1, Math.round(mini.height * scale));
+        mini.style.width = `${dw}px`;
+        mini.style.height = `${dh}px`;
+        previewH = dh;
+      } else if (slot) {
+        slot.style.visibility = "hidden";
+        mini.width = 1;
+        mini.height = 1;
+        mini.style.width = "0";
+        mini.style.height = "0";
       }
-      if (slot) slot.style.visibility = "visible";
-      FontEngine.renderGlyphInBox(grid, mini, boxW, boxH, {
-        fontData,
-        ch,
-        variant: previewVariant,
-        color: "#a8c4ff",
-        fontSize: 34,
-      });
+      btn.style.minHeight = `${Math.max(46, previewH + labelPx + pad)}px`;
     });
+    paintCharMegaPreview();
   }
 
   function updateChart() {
@@ -1308,18 +1384,33 @@
 
   function setupEditor() {
     const canvas = $("pixelCanvas");
-    const wrap = document.querySelector(".pixel-wrap");
-    if (wrap && !wrap.dataset.resizeBound) {
-      wrap.dataset.resizeBound = "1";
+    const viewport = $("pixelViewport");
+    if (viewport && !viewport.dataset.resizeBound) {
+      viewport.dataset.resizeBound = "1";
       new ResizeObserver(() => {
-        const drawPanel = document.querySelector('[data-tab-panel="draw"]');
-        if (drawPanel?.classList.contains("active")) fitEditorToView();
-      }).observe(wrap);
+        paintCharMegaPreview();
+      }).observe(viewport);
     }
 
     const onPointerDown = (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
+
+      if (!isDrawToolActive()) {
+        if (e.target !== viewport && e.target !== canvas) return;
+        isPanning = true;
+        panStart = {
+          x: e.clientX,
+          y: e.clientY,
+          scrollLeft: viewport.scrollLeft,
+          scrollTop: viewport.scrollTop,
+        };
+        viewport.setPointerCapture(e.pointerId);
+        updateEditorCursor();
+        return;
+      }
+
+      if (e.target !== canvas) return;
       canvas.setPointerCapture(e.pointerId);
       isDrawing = true;
       const cell = canvasCellFromEvent(e);
@@ -1327,23 +1418,64 @@
     };
 
     const onPointerMove = (e) => {
+      if (isPanning && panStart) {
+        viewport.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
+        viewport.scrollTop = panStart.scrollTop - (e.clientY - panStart.y);
+        return;
+      }
       if (!isDrawing) return;
       const cell = canvasCellFromEvent(e);
       if (cell) paintAt(cell.x, cell.y);
     };
 
     const endStroke = (e) => {
+      if (isPanning) {
+        isPanning = false;
+        panStart = null;
+        if (viewport.hasPointerCapture?.(e.pointerId)) {
+          viewport.releasePointerCapture(e.pointerId);
+        }
+        updateEditorCursor();
+        return;
+      }
       if (canvas.hasPointerCapture?.(e.pointerId)) {
         canvas.releasePointerCapture(e.pointerId);
       }
       isDrawing = false;
     };
 
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", endStroke);
-    canvas.addEventListener("pointercancel", endStroke);
+    viewport.addEventListener("pointerdown", onPointerDown);
+    viewport.addEventListener("pointermove", onPointerMove);
+    viewport.addEventListener("pointerup", endStroke);
+    viewport.addEventListener("pointercancel", endStroke);
     canvas.addEventListener("lostpointercapture", () => { isDrawing = false; });
+    viewport.addEventListener("lostpointercapture", () => {
+      isPanning = false;
+      panStart = null;
+      updateEditorCursor();
+    });
+
+    viewport.addEventListener("wheel", (e) => {
+      if ($("rotatePrompt") && !$("rotatePrompt").hidden) return;
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const ox = e.clientX - rect.left + viewport.scrollLeft;
+      const oy = e.clientY - rect.top + viewport.scrollTop;
+      const old = parseInt($("pixelZoom").value, 10);
+      const step = e.deltaY > 0 ? -8 : 8;
+      const next = Math.max(40, Math.min(400, old + step));
+      if (next === old) return;
+      $("pixelZoom").value = next;
+      $("pixelZoomVal").textContent = next + "%";
+      drawEditor();
+      requestAnimationFrame(() => {
+        const ratio = next / old;
+        viewport.scrollLeft = Math.max(0, ox * ratio - (e.clientX - rect.left));
+        viewport.scrollTop = Math.max(0, oy * ratio - (e.clientY - rect.top));
+      });
+    }, { passive: false });
+
+    updateEditorCursor();
   }
 
   function setupLinePreview() {
@@ -1393,10 +1525,18 @@
   function setupTools() {
     document.querySelectorAll("[data-tool]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        tool = btn.dataset.tool;
-        document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("active", b === btn));
+        const t = btn.dataset.tool;
+        tool = tool === t ? null : t;
+        document.querySelectorAll("[data-tool]").forEach((b) => {
+          const on = b.dataset.tool === tool;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        updateEditorCursor();
       });
     });
+
+    $("fitEditorBtn")?.addEventListener("click", fitEditorToView);
 
     $("clearGrid").addEventListener("click", () => {
       editorGrid = FontEngine.createEmptyGrid();
@@ -1421,7 +1561,6 @@
       syncVariantUI();
       if (!linkVariants) syncEditorFromFont();
       else drawEditor();
-      fitEditorToView();
       refreshAllViews();
     };
 
@@ -1502,7 +1641,7 @@
     window.addEventListener("orientationchange", () => {
       setTimeout(() => {
         updateMobileShell();
-        fitEditorToView();
+        paintCharMegaPreview();
       }, 200);
     });
   }

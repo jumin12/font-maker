@@ -603,44 +603,78 @@
     }
     .char-btn {
       width: 100%;
-      aspect-ratio: 1;
-      min-height: 0;
-      max-height: 46px;
-      padding: 0.1rem 0.12rem 0.14rem;
+      min-height: 48px;
+      height: auto;
+      padding: 0.22rem 0.15rem 0.2rem;
       background: var(--bg-input);
       border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
       text-align: center; color: var(--text-muted); font-family: inherit;
-      font-size: clamp(0.62rem, 1.6vw, 0.8rem);
-      font-weight: 500;
-      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-      gap: 0.08rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.14rem;
     }
     .char-btn.active { border-color: var(--border-focus); color: var(--accent); background: var(--accent-soft); }
     .char-mini-slot {
-      flex: 1 1 auto;
-      min-height: 0;
+      flex: 0 0 auto;
       width: 100%;
-      max-height: 62%;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: visible;
+      min-height: 0;
     }
     .char-mini {
       display: block;
       flex-shrink: 0;
       image-rendering: pixelated;
       pointer-events: none;
-      width: 30px;
-      height: 30px;
     }
     .char-glyph {
       line-height: 1;
-      font-size: clamp(0.58rem, 2.2vw, 0.76rem);
+      font-size: 0.65rem;
       font-weight: 600;
       color: var(--accent);
       opacity: 0.95;
       flex-shrink: 0;
+      text-align: center;
+      width: 100%;
+    }
+    .char-mega-preview {
+      flex-shrink: 0;
+      margin-top: 0.35rem;
+      padding: 0.45rem 0.4rem 0.5rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .char-mega-title {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      align-self: flex-start;
+    }
+    .char-mega-slot {
+      width: 100%;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+    #charMegaCanvas {
+      display: block;
+      image-rendering: pixelated;
+      max-width: 100%;
+    }
+    .char-mega-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1;
     }
     .char-lbl { display: none; }
     .draw-sidebar-tools {
@@ -649,9 +683,8 @@
       margin-top: auto;
     }
     @media (max-width: 639px) {
-      .char-picker { overflow-y: auto; max-height: min(38vh, 280px); }
+      .char-picker { overflow-y: auto; max-height: none; flex: 1 1 auto; }
       .char-section-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-      .char-btn { max-height: 44px; }
     }
 
     /* Language tab */
@@ -733,16 +766,26 @@
       background: var(--bg-input); color: var(--text-muted); font-size: 0.75rem; cursor: pointer;
     }
     .tool-btn.active { border-color: var(--border-focus); color: var(--accent); }
+    .tool-hint {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      margin: 0.1rem 0 0;
+      line-height: 1.35;
+    }
     .pixel-wrap {
       flex: 1; min-height: 0;
-      display: flex; justify-content: center; align-items: center;
-      padding: 0.2rem;
+      position: relative;
       background: var(--bg-input);
       border: 1px solid var(--border); border-radius: var(--radius);
       overflow: auto;
-      touch-action: none;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
     }
-    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; pointer-events: auto; }
+    .pixel-wrap.can-draw { touch-action: none; }
+    .pixel-wrap.is-panning { cursor: grabbing; }
+    .pixel-wrap:not(.can-draw):not(.is-panning) { cursor: grab; }
+    #pixelCanvas { cursor: crosshair; image-rendering: pixelated; flex-shrink: 0; touch-action: none; pointer-events: auto; display: block; }
+    #pixelCanvas.draw-off { pointer-events: none; cursor: inherit; }
     input[type="range"] { accent-color: var(--accent); }
     input[type="number"] {
       width: 48px; padding: 0.2rem 0.3rem; font-size: 0.75rem;
@@ -1197,8 +1240,9 @@
               <div class="char-picker" id="charPicker"></div>
               <div class="draw-sidebar-tools">
                 <div class="tool-row">
-                  <button type="button" class="tool-btn active" data-tool="pen">Draw</button>
-                  <button type="button" class="tool-btn" data-tool="erase">Erase</button>
+                  <button type="button" class="tool-btn active" data-tool="pen" aria-pressed="true">Draw</button>
+                  <button type="button" class="tool-btn" data-tool="erase" aria-pressed="false">Erase</button>
+                  <button type="button" class="tool-btn" id="fitEditorBtn" title="Fit canvas in view">Fit</button>
                   <button type="button" class="tool-btn" id="clearGrid">Clear</button>
                   <button type="button" class="tool-btn" id="fillGrid">Fill</button>
                 </div>
@@ -1207,11 +1251,12 @@
                   <input type="range" id="pixelZoom" min="40" max="400" value="100" step="5" />
                   <span class="size-value" id="pixelZoomVal">100%</span>
                 </div>
+                <p class="hint tool-hint">Turn off Draw and Erase to pan the canvas (drag). Scroll or pinch-zoom with the slider.</p>
                 <p class="hint" id="editorHint">Editing <strong id="editCharLabel">A</strong> · linked across all styles</p>
               </div>
             </aside>
             <div class="draw-editor-col">
-              <div class="pixel-wrap">
+              <div class="pixel-wrap" id="pixelViewport">
                 <canvas id="pixelCanvas"></canvas>
               </div>
             </div>
