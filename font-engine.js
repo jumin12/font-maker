@@ -820,7 +820,12 @@ const FontEngine = (() => {
       `italic 400 48px ${ENGLISH_FONT_FAMILY}`,
       `italic 700 48px ${ENGLISH_FONT_FAMILY}`,
     ];
-    await Promise.all(specs.map((spec) => document.fonts.load(spec)));
+    const loads = specs.map((spec) => {
+      const load = document.fonts.load(spec);
+      const timeout = new Promise((resolve) => setTimeout(resolve, 6000));
+      return Promise.race([load, timeout]);
+    });
+    await Promise.all(loads);
   }
 
   function rasterizeFromSystemFont(char, variant = "regular") {

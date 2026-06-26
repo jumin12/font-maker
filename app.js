@@ -20,6 +20,8 @@
   const LOCAL_STORE = "savedFonts";
   const IDB_TIMEOUT_MS = 4000;
   const FETCH_TIMEOUT_MS = 12000;
+  const FONT_FACE_TIMEOUT_MS = 6000;
+  let catalogReady = false;
 
   const SAMPLES = [
     "The Quick Brown Fox",
@@ -47,7 +49,7 @@
     $("main").hidden = true;
     document.querySelector(".app-shell").classList.remove("workspace");
     updateRotatePrompt();
-    refreshSavedFontsSection();
+    if (catalogReady) queueSavedFontsRefresh();
   }
 
   function resolveAssetUrl(path) {
@@ -66,6 +68,15 @@
     }
   }
 
+  function withTimeout(promise, ms, label = "operation") {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+      }),
+    ]);
+  }
+
   function readEmbeddedManifest() {
     const el = document.getElementById("embeddedManifest");
     if (!el?.textContent?.trim()) return null;
@@ -76,9 +87,24 @@
     }
   }
 
+  async function fetchManifestData(url) {
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) return null;
+    const text = await res.text();
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith("<")) return null;
+    try {
+      const data = JSON.parse(trimmed);
+      if (!Array.isArray(data?.families)) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
   async function loadFontCatalog() {
     const embedded = readEmbeddedManifest();
-    if (embedded) return embedded;
+    if (embedded?.families?.length) return embedded;
 
     const candidates = [
       resolveAssetUrl("manifest.json"),
@@ -86,13 +112,66 @@
     ];
     for (const url of [...new Set(candidates)]) {
       try {
-        const res = await fetchWithTimeout(url);
-        if (res.ok) return await res.json();
+        const data = await fetchManifestData(url);
+        if (data) return data;
       } catch {
         /* try next */
       }
     }
     throw new Error("Font catalog unavailable");
+  }
+
+  function buildFamiliesList(catalog) {
+    return [
+      {
+        id: FontEngine.ENGLISH_BASE_ID,
+        name: "English Base",
+        displayName: "English Base",
+        builtin: FontEngine.ENGLISH_BASE_ID,
+        variants: {},
+      },
+      ...catalog.filter((f) => f.id !== FontEngine.ENGLISH_BASE_ID),
+    ];
+  }
+
+  function showHomeCatalog() {
+    catalogReady = true;
+    document.documentElement.classList.add("catalog-ready");
+    const loading = $("homeLoading");
+    const content = $("homeContent");
+    const empty = $("homeEmpty");
+    if (loading) loading.hidden = true;
+    if (empty) empty.hidden = true;
+    if (content) content.hidden = false;
+  }
+
+  function showHomeCatalogError(message) {
+    if (catalogReady) return;
+    const loading = $("homeLoading");
+    if (!loading) return;
+    loading.hidden = false;
+    loading.innerHTML = `<p style="color:#e88">${message}</p>
+      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-muted)">
+        Check your connection or try refreshing the page.</p>`;
+  }
+
+  function bootCatalogFromData(data) {
+    const catalog = data?.families;
+    if (!Array.isArray(catalog) || !catalog.length) return false;
+    families = buildFamiliesList(catalog);
+    buildFontGallery();
+    showHomeCatalog();
+    queueSavedFontsRefresh();
+    return true;
+  }
+
+  function bootCatalogSync() {
+    if (catalogReady) return true;
+    return bootCatalogFromData(readEmbeddedManifest());
+  }
+
+  function queueSavedFontsRefresh() {
+    void withTimeout(refreshSavedFontsSection(), 8000, "saved fonts").catch(() => {});
   }
 
   function isMobileEditorDevice() {
@@ -123,18 +202,6 @@
     updateRotatePrompt();
   }
 
-  function showHomeCatalog() {
-    $("homeLoading").hidden = true;
-    $("homeEmpty").hidden = true;
-    $("homeContent").hidden = false;
-  }
-
-  function showHomeCatalogError(message) {
-    $("homeLoading").innerHTML = `<p style="color:#e88">${message}</p>
-      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-muted)">
-        Check your connection or try refreshing the page.</p>`;
-  }
-
   function openLocalDb() {
     return Promise.race([
       new Promise((resolve, reject) => {
@@ -159,14 +226,14 @@
   async function listSavedFonts() {
     try {
       const db = await openLocalDb();
-      return await new Promise((resolve, reject) => {
+      return await withTimeout(new Promise((resolve, reject) => {
         const tx = db.transaction(LOCAL_STORE, "readonly");
         const req = tx.objectStore(LOCAL_STORE).getAll();
         req.onsuccess = () => {
           resolve((req.result || []).sort((a, b) => b.savedAt - a.savedAt));
         };
         req.onerror = () => reject(req.error);
-      });
+      }), IDB_TIMEOUT_MS, "IndexedDB read");
     } catch {
       return [];
     }
@@ -250,10 +317,10 @@
   function hydrateSavedFontPreviews(saved) {
     const previewSize = 32;
     const sample = "Aa Bb 123";
-    for (const entry of saved) {
+    const renderOne = (entry) => {
       const wrap = document.querySelector(`[data-saved-preview-id="${entry.id}"]`);
       const canvas = wrap?.querySelector(".font-card-preview-canvas");
-      if (!canvas || !entry.payload) continue;
+      if (!canvas || !entry.payload) return;
       try {
         const data = FontEngine.deserializeFont(entry.payload);
         FontEngine.renderTextToCanvas(sample, data, "regular", canvas, previewSize, "#a8c4ff");
@@ -265,6 +332,15 @@
         wrap.textContent = sample;
         wrap.classList.remove("font-card-preview-saved");
       }
+    };
+    if (typeof requestIdleCallback === "function") {
+      saved.forEach((entry, i) => {
+        requestIdleCallback(() => renderOne(entry), { timeout: 2000 + i * 100 });
+      });
+    } else {
+      saved.forEach((entry, i) => {
+        setTimeout(() => renderOne(entry), i * 50);
+      });
     }
   }
 
@@ -1051,7 +1127,11 @@
     hydrateFamilyPreviews();
   }
 
-  async function hydrateFamilyPreviews() {
+  function hydrateFamilyPreviews() {
+    void hydrateFamilyPreviewsAsync();
+  }
+
+  async function hydrateFamilyPreviewsAsync() {
     for (const fam of families) {
       const el = document.querySelector(`[data-preview-id="${fam.id}"]`);
       if (!el) continue;
@@ -1062,14 +1142,14 @@
       const regular = fam.variants?.regular;
       if (!regular?.path) continue;
       try {
-        const res = await fetchWithTimeout(resolveAssetUrl(regular.path));
+        const res = await fetchWithTimeout(resolveAssetUrl(regular.path), 8000);
         if (!res.ok) continue;
         const buffer = await res.arrayBuffer();
         const blob = new Blob([buffer], { type: "font/ttf" });
         const url = URL.createObjectURL(blob);
         const faceName = `preview-${fam.id}`;
         const face = new FontFace(faceName, `url(${url})`);
-        await face.load();
+        await withTimeout(face.load(), FONT_FACE_TIMEOUT_MS, "font preview");
         document.fonts.add(face);
         el.style.fontFamily = `"${faceName}", sans-serif`;
       } catch {
@@ -1090,7 +1170,11 @@
     $("loadingText").textContent = `Loading ${family.name}…`;
 
     try {
-      fontData = await FontEngine.importFamilyFromManifest(family, familyId);
+      fontData = await withTimeout(
+        FontEngine.importFamilyFromManifest(family, familyId),
+        45000,
+        "font load"
+      );
       currentFamilyId = familyId;
       initWorkspaceFromFont(family);
     } catch (err) {
@@ -1453,6 +1537,8 @@
   }
 
   async function init() {
+    bootCatalogSync();
+
     setupEditor();
     setupLinePreview();
     setupTools();
@@ -1543,31 +1629,14 @@
       c.addEventListener("click", () => { $("typeArea").value = c.dataset.text; refreshAllViews(); });
     });
 
-    try {
-      const data = await loadFontCatalog();
-      const catalog = data.families || [];
-      families = [
-        {
-          id: FontEngine.ENGLISH_BASE_ID,
-          name: "English Base",
-          displayName: "English Base",
-          builtin: FontEngine.ENGLISH_BASE_ID,
-          variants: {},
-        },
-        ...catalog.filter((f) => f.id !== FontEngine.ENGLISH_BASE_ID),
-      ];
-      if (!families.length) {
-        $("homeLoading").hidden = true;
-        $("homeContent").hidden = true;
-        $("homeEmpty").hidden = false;
-        return;
+    if (!catalogReady) {
+      try {
+        const data = await loadFontCatalog();
+        bootCatalogFromData(data);
+      } catch (err) {
+        console.error("Font catalog load failed:", err);
+        showHomeCatalogError("Could not load fonts.");
       }
-      buildFontGallery();
-      showHomeCatalog();
-      refreshSavedFontsSection();
-    } catch (err) {
-      console.error("Font catalog load failed:", err);
-      showHomeCatalogError("Could not load fonts.");
     }
   }
 
